@@ -1,0 +1,148 @@
+[tool.poetry]
+name = "pysyringe"
+version = "1.0.0"
+description = "An opinionated dependency injection library for Python"
+authors = ["Hugo Chinchilla <hugoasecas@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "~3.12"
+
+[tool.poetry.group.dev.dependencies]
+coverage = "^7.3"
+pre-commit = "^3.4.0"
+ruff = "^0.2.0"
+mypy = "^1.6.1"
+
+[tool.ruff]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+lint.select = [
+    "E4",
+    "E7",
+    "E9",
+    "F",
+    "W",
+    "I",
+    "N",
+    "UP",
+    "YTT",
+    "ANN001",
+    "ANN2",
+    "ANN4",
+    "ASYNC",
+    "S",
+    "BLE",
+    "B",
+    "A001",
+    "A002",
+    "COM",
+    "C",
+    #"DTZ",
+    "T",
+    #"DJ",
+    "EXE",
+    "FA",
+    "ISC",
+    "ICN",
+    "INP",
+    "PIE",
+    "T20",
+    "PYI",
+    "Q",
+    "RSE",
+    "RET",
+    "SLF",
+    "SIM",
+    "TID",
+    "TCH",
+    "ARG",
+    "ERA",
+    "PGH",
+    "PL",
+    "TRY",
+    "FLY",
+    "PERF",
+    "RUF",
+]
+lint.ignore = ["ANN401", "UP015", "COM812", "TRY401"]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+lint.fixable = ["ALL"]
+lint.unfixable = []
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".cache",
+    ".direnv",
+    ".git",
+    ".git-rewrite",
+    ".venv",
+    "venv",
+    "__pypackages__",
+    "__pycache__",
+]
+
+# Same as Black.
+line-length = 88
+
+# Allow unused variables when underscore-prefixed.
+lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Assume Python 3.12
+target-version = "py312"
+
+cache-dir = ".cache/ruff"
+
+[tool.ruff.lint.per-file-ignores]
+"./tests/*" = ["ANN201", "S101"]
+
+[tool.ruff.lint.mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+no_implicit_optional = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+cache_dir = '.cache/mypy'
+
+
+[tool.coverage.run]
+branch = true
+relative_files = true
+source = ["./"]
+omit = [
+    "tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "raise NotImplementedError",
+    "if __name__ == \"__main__\":",
+    "pass",
+]
+precision = 2
+skip_covered = true
+skip_empty = true
+fail_under = 95
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+python_files = "test_*.py"
+python_classes = "*Test"
+python_functions = "test_*"
+cache_dir = ".cache/pytest"
+filterwarnings = []
+
+[tool.isort]
+profile = "black"
