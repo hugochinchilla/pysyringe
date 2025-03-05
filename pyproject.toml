@@ -64,7 +64,7 @@ lint.select = [
     "PERF",
     "RUF",
 ]
-lint.ignore = ["ANN401", "UP015", "COM812", "TRY401"]
+lint.ignore = ["ANN401", "UP015", "COM812", "TRY401", "PLR2004"]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 lint.fixable = ["ALL"]

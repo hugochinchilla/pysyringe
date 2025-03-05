@@ -8,7 +8,7 @@ T = TypeVar("T")
 NoneType = type(None)
 
 
-class Unresolved:
+class _Unresolved:
     pass
 
 
@@ -24,19 +24,19 @@ class UnresolvableUnionTypeError(Exception):
         )
 
 
-class Resolver:
+class _Resolver:
     def __init__(self, factory: object) -> None:
         self.factory = factory
         self.mocks: dict = {}
         self.aliases: dict = {}
         self.never_provide: list[type] = []
 
-    def resolve(self, cls: type[T]) -> T | Unresolved:  # noqa: PLR0911
+    def resolve(self, cls: type[T]) -> T | _Unresolved:  # noqa: PLR0911
         try:
             if issubclass(cls, tuple(self.never_provide)):
-                return Unresolved()
+                return _Unresolved()
         except TypeError:
-            return Unresolved()
+            return _Unresolved()
 
         if cls in self.mocks:
             return cast(T, self.mocks[cls])
@@ -52,7 +52,7 @@ class Resolver:
         if instance:
             return instance
 
-        return Unresolved()
+        return _Unresolved()
 
     def __make_from_factory(self, cls: type[T]) -> T | None:
         for factory in self.__get_factories():
@@ -71,7 +71,7 @@ class Resolver:
         dependencies = {}
         for arg_name, arg_type in _TypeHelper.get_constructor_arguments(cls):
             resolved = self.resolve(arg_type)
-            if isinstance(resolved, Unresolved):
+            if isinstance(resolved, _Unresolved):
                 return None
             dependencies[arg_name] = resolved
 
@@ -80,30 +80,30 @@ class Resolver:
 
 class Container:
     def __init__(self, factory: object) -> None:
-        self.resolver = Resolver(factory)
+        self._resolver = _Resolver(factory)
 
     def never_provide(self, cls: type[T]) -> None:
-        self.resolver.never_provide.append(cls)
+        self._resolver.never_provide.append(cls)
 
     def provide(self, cls: type[T]) -> T:
-        resolved = self.resolver.resolve(cls)
-        if isinstance(resolved, Unresolved):
+        resolved = self._resolver.resolve(cls)
+        if isinstance(resolved, _Unresolved):
             raise UnknownDependencyError(cls)
 
         return resolved
 
     def inject(self, function: Callable) -> Callable:
-        injector = _Injector(self.resolver)
+        injector = _Injector(self._resolver)
         return injector.inject(function)
 
     def clear_mocks(self) -> None:
-        self.resolver.mocks = {}
+        self._resolver.mocks = {}
 
     def use_mock(self, cls: type[T], mock: T) -> None:
-        self.resolver.mocks[cls] = mock
+        self._resolver.mocks[cls] = mock
 
     def alias(self, interface: type, implementation: type) -> None:
-        self.resolver.aliases[interface] = implementation
+        self._resolver.aliases[interface] = implementation
 
 
 class ImpossibleInjectionError(Exception):
@@ -114,8 +114,8 @@ class ImpossibleInjectionError(Exception):
 
 
 class _Injector:
-    def __init__(self, resolver: Resolver) -> None:
-        self.resolver = resolver
+    def __init__(self, _resolver: _Resolver) -> None:
+        self._resolver = _resolver
 
     def inject(self, function: Callable) -> Callable:
         injections = self.__get_injectable_arguments(function)
@@ -135,14 +135,14 @@ class _Injector:
     def __get_injectable_arguments(self, function: Callable) -> dict[str, object]:
         signature = inspect.signature(function)
         resolved_arguments = {
-            (p.name, self.resolver.resolve(p.annotation))
+            (p.name, self._resolver.resolve(p.annotation))
             for p in signature.parameters.values()
             if p.name != "self"
         }
         only_resolved = {
             (parameter_name, value)
             for (parameter_name, value) in resolved_arguments
-            if not isinstance(value, Unresolved)
+            if not isinstance(value, _Unresolved)
         }
         return dict(only_resolved)
 
