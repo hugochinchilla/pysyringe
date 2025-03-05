@@ -31,4 +31,4 @@ jobs:
     - name: Install test environment
       run: poetry install --with=dev
     - name: Run tests and collect coverage
-      run: coverage run -m pytest && coverage report -m
+      run: poetry run coverage run -m pytest && poetry run coverage report -m

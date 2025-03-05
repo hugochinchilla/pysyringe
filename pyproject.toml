@@ -13,6 +13,7 @@ coverage = "^7.3"
 pre-commit = "^3.4.0"
 ruff = "^0.2.0"
 mypy = "^1.6.1"
+pytest = "^8.3.5"
 
 [tool.ruff]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
