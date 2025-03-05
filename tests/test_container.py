@@ -84,6 +84,17 @@ class ContainerTest:
 
         assert service.dependency is mock_database
 
+    def test_clear_mock_dependencies(self):
+        mock_database = object()
+        container = Container(DatabaseFactory())
+        container.use_mock(Database, mock_database)
+        container.clear_mocks()
+
+        service = container.provide(DatabaseService)
+
+        assert service.dependency is not mock_database
+        assert isinstance(service.dependency, Database)
+
     def test_use_type_alias(self):
         class Database:
             pass
@@ -131,3 +142,17 @@ class ContainerTest:
         result = injected_function()
 
         assert isinstance(result, Dependency)
+
+    def test_provide_blacklisted_dependency_results_in_error(self):
+        class ForbiddenDependency:
+            pass
+
+        class Service:
+            def __init__(self, dependency: ForbiddenDependency) -> None:
+                self.dependency = dependency
+
+        container = Container(EmptyFactory())
+        container.never_provide(ForbiddenDependency)
+
+        with pytest.raises(UnknownDependencyError):
+            container.provide(Service)
