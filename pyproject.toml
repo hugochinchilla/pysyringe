@@ -1,6 +1,6 @@
 [project]
 name = "pysyringe"
-version = "1.0.0"
+version = "1.0.1"
 description = "An opinionated dependency injection library for Python"
 authors = [
     {name = "Hugo Chinchilla", email = "hugoasecas@gmail.com"},
