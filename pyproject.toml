@@ -1,9 +1,16 @@
-[tool.poetry]
+[project]
 name = "pysyringe"
 version = "1.0.0"
 description = "An opinionated dependency injection library for Python"
-authors = ["Hugo Chinchilla <hugoasecas@gmail.com>"]
+authors = [
+    {name = "Hugo Chinchilla", email = "hugoasecas@gmail.com"},
+]
 readme = "README.md"
+
+[project.urls]
+homepage = "https://github.com/hugochinchilla/pysyringe"
+repository = "https://github.com/hugochinchilla/pysyringe"
+issues = "https://github.com/hugochinchilla/pysyringe/issues"
 
 [tool.poetry.dependencies]
 python = "~3.12"

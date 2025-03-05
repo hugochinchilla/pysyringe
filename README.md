@@ -4,6 +4,14 @@ An opinionated dependency injection library for Python.
 
 A container that does not rely on adding decorators to your domain classes. It only wraps views in the infrastructure layer to keep your domain and app layer decoupled from the framework and the container.
 
+## Installation
+
+```bash
+pip install pysyringe
+```
+
+[pysyringe on PyPI](https://pypi.org/project/pysyringe/)
+
 ## Usage
 
 
