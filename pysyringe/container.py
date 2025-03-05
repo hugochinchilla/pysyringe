@@ -18,7 +18,7 @@ class UnknownDependencyError(Exception):
 
 
 class UnresolvableUnionTypeError(Exception):
-    def __init__(self, type_: UnionType) -> None:
+    def __init__(self, type_: type) -> None:
         super().__init__(
             f"Cannot resolve [{type_}]: remove UnionType or define a factory",
         )
@@ -172,14 +172,24 @@ class _TypeHelper:
 
     @classmethod
     def _desambiguate(cls, type_: type[T]) -> type[T]:
-        if isinstance(type_, UnionType):
-            if cls._is_optional(type_):  # type: ignore[unreachable]
+        if cls._is_union(type_):
+            if cls._is_optional(type_):
                 return cls._resolve_optional(type_)
             raise UnresolvableUnionTypeError(type_)
         return type_
 
+    @classmethod
+    def _is_union(cls, type_: T) -> bool:
+        if typing.get_origin(type_) is typing.Union:
+            return True  # Syntax using "Union[object, str]"
+
+        if isinstance(type_, UnionType):
+            return True  # Syntax using "object | str"
+
+        return False
+
     @staticmethod
-    def _is_optional(type_: UnionType) -> bool:
+    def _is_optional(type_: object) -> bool:
         types = set(typing.get_args(type_))
         has_two_types = len(types) == 2
         one_of_them_is_optional = NoneType in types

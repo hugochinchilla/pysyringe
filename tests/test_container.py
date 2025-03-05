@@ -120,7 +120,17 @@ class ContainerTest:
 
         assert isinstance(service.dependency, Database)
 
-    def test_raises_exception_for_union_types(self):
+    def test_raises_exception_for_union_types_using_or_syntax(self):
+        class Service:
+            def __init__(self, dependency: Database | object) -> None:
+                self.dependency = dependency
+
+        container = Container(EmptyFactory())
+
+        with pytest.raises(UnresolvableUnionTypeError):
+            container.provide(Service)
+
+    def test_raises_exception_for_union_types_union_constructor(self):
         class Service:
             def __init__(self, dependency: Database | object) -> None:
                 self.dependency = dependency
