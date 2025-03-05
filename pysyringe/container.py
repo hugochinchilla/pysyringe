@@ -106,13 +106,6 @@ class Container:
         self._resolver.aliases[interface] = implementation
 
 
-class ImpossibleInjectionError(Exception):
-    def __init__(self, cls: type, argument_name: str) -> None:
-        super().__init__(
-            f'Container does not know how to provide {cls} for argument "{argument_name}"',
-        )
-
-
 class _Injector:
     def __init__(self, _resolver: _Resolver) -> None:
         self._resolver = _resolver
