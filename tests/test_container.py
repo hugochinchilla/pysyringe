@@ -1,6 +1,12 @@
 import pytest
+from typing import Optional, Union
 
-from pysyringe.container import Container, UnknownDependencyError
+from pysyringe.container import (
+    Container,
+    UnknownDependencyError,
+    UnresolvableUnionTypeError,
+    ImpossibleInjectionError,
+)
 
 
 class EmptyFactory:
@@ -47,3 +53,85 @@ class ContainerTest:
             match=r"Container does not know how to provide <class '.*\.Person'>",
         ):
             container.provide(Person)
+
+    def test_register_and_use_factory(self):
+        class Database:
+            def __init__(self, connection_string: str) -> None:
+                self.connection_string = connection_string
+
+        class DatabaseFactory:
+            def create_db(self) -> Database:
+                return Database("sqlite://")
+
+        container = Container(DatabaseFactory())
+        db = container.provide(Database)
+
+        assert isinstance(db, Database)
+        assert db.connection_string == "sqlite://"
+
+    def test_use_mock_dependency(self):
+        class Service:
+            def __init__(self, dependency: object) -> None:
+                self.dependency = dependency
+
+        mock_dependency = object()
+        container = Container(EmptyFactory())
+        container.mock(Service, dependency=mock_dependency)
+
+        service = container.provide(Service)
+        assert service.dependency is mock_dependency
+
+    def test_use_type_alias(self):
+        class Database:
+            pass
+
+        class Postgres(Database):
+            pass
+
+        container = Container(EmptyFactory())
+        container.alias(Database, Postgres)
+
+        db = container.provide(Database)
+        assert isinstance(db, Postgres)
+
+    def test_handle_optional_dependencies(self):
+        class Service:
+            def __init__(self, dependency: Optional[object] = None) -> None:
+                self.dependency = dependency
+
+        container = Container(EmptyFactory())
+        service = container.provide(Service)
+
+        assert service.dependency is None
+
+    def test_raises_exception_for_union_types(self):
+        class Service:
+            def __init__(self, dependency: Union[str, int]) -> None:
+                self.dependency = dependency
+
+        container = Container(EmptyFactory())
+
+        with pytest.raises(UnresolvableUnionTypeError):
+            container.provide(Service)
+
+    def test_inject_function(self):
+        class Dependency:
+            pass
+
+        def function(dep: Dependency) -> Dependency:
+            return dep
+
+        container = Container(EmptyFactory())
+        injected_function = container.inject(function)
+        result = injected_function()
+
+        assert isinstance(result, Dependency)
+
+    def test_raises_exception_for_impossible_injection(self):
+        def function(dep: object) -> object:
+            return dep
+
+        container = Container(EmptyFactory())
+
+        with pytest.raises(ImpossibleInjectionError):
+            container.inject(function)
