@@ -15,8 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}  # Checkout the specific tag, not the branch
-          fetch-depth: 0  # Fetch full git history for proper version detection
+          ref: ${{ github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -26,13 +25,10 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
-      - name: Verify git tags
-        run: |
-          git tag --list
-          echo "Current tag: ${{ github.ref_name }}"
-
       - name: Build wheel and sdist
         run: |
+          git checkout ${{ github.ref }}
+          git reset --hard ${{ github.ref }}
           uv sync --group dev
           uv run pytest
           git status
