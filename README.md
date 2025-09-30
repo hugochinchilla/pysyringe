@@ -24,66 +24,6 @@ pip install pysyringe
 
 ## 🚀 Usage
 
-Quick start:
-
-1. Define a factory with methods annotated by the return type you want to resolve.
-2. Create a `Container(factory)`.
-3. Optionally configure `alias(...)` and `never_provide(...)`.
-4. Inject dependencies at the call site with `@container.inject`.
-5. In tests, configure `use_mock(...)` and `clear_mocks()` as needed.
-
-
-```python
-# container.py
-from myapp.domain import CalendarInterface, EmailSenderInterface
-from myapp.infra import LoggingEmailSender, SmtpEmailSender, Calendar
-from django.core.http import HttpRequest, HttpResponse
-
-
-class Factory:
-    """
-    The factory is used to instruct how to create complex objects or to
-    customize dependencies based on the environment.
-
-    Any class with methods annotated with return types can be used to
-    resolve dependencies. There is not a concrete interface you need to implement,
-    the container will introspect the return types of the methods to know how to
-    resolve the dependencies.
-    """
-    def __init__(self, environment: str) -> None:
-        self.environment = environment
-
-    def get_mailer(self) -> EmailSenderInterface:
-        """
-        The name of the method is irrelevant, the container knows this method
-        is used to resolve the EmailSenderInterface because of the return type
-        annotation.
-        """
-        if self.environment == "production":
-            return SmtpEmailSender("mta.example.org", 25)
-
-        return LoggingEmailSender()
-
-
-# Create your custom factory
-factory = Factory(getenv('ENVIRONMENT'))
-# Initialize the container with your factory
-container = Container(factory)
-# You can blacklist classes yo don't want the container to try to instantiate by inference
-container.never_provide(HttpRequest)
-container.never_provide(HttpResponse)
-# You can also alias interfaces to concrete classes
-container.alias(CalendarInterface, Calendar)
-
-
-# views.py
-from container import container
-
-@container.inject
-def my_view(request: HttpRequest, calendar: CalendarInterface) -> HttpResponse:
-    now = calendar.now()
-    return HttpResponse(f"Hello, World! The current time is {now}")
-```
 
 ### 1) Define a factory with return-type annotations
 
