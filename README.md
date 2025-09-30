@@ -1,5 +1,8 @@
 # PySyringe
 
+[![Coverage](https://codecov.io/gh/hugochinchilla/pysyringe/branch/main/graph/badge.svg)](https://codecov.io/gh/hugochinchilla/pysyringe)
+[![PyPI version](https://badge.fury.io/py/pysyringe.svg)](https://badge.fury.io/py/pysyringe)
+
 An opinionated dependency injection library for Python.
 
 A container that does not rely on adding decorators to your domain classes. It only wraps views in the infrastructure layer to keep your domain and app layer decoupled from the framework and the container.
@@ -13,6 +16,7 @@ A container that does not rely on adding decorators to your domain classes. It o
 - 🔒 **Thread-safe mocks**: mocks are stored per-thread; aliases and blacklists are global.
 - 🧰 **Aliases & blacklists**: map interfaces to implementations and mark types as non-creatable.
 - ⚡ **Resolution cache**: caches factory lookups and constructor introspection (not instances).
+- ✅ **100% test coverage**: comprehensive test suite ensuring reliability and correctness.
 
 ## 📦 Installation
 
