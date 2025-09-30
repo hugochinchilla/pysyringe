@@ -35,6 +35,8 @@ jobs:
         run: |
           uv sync --group dev
           uv run pytest
+          git status
+          git diff
           uv build
 
       - name: Create GitHub Release
