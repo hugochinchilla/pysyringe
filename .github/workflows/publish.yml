@@ -15,6 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref }}  # Checkout the specific tag, not the branch
           fetch-depth: 0  # Fetch full git history for proper version detection
 
       - name: Set up Python
