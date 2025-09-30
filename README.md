@@ -155,6 +155,47 @@ PySyringe includes a lightweight resolution cache to speed up dependency resolut
 
 This means singleton semantics or any custom sharing strategy you define remain unchanged. The cache only reduces overhead during resolution.
 
+### 🧷 Singleton helper
+
+Use the built-in `singleton` helper in your factory methods when you want shared instances keyed by constructor arguments.
+
+```python
+from pysyringe.singleton import singleton
+from pysyringe.container import Container
+
+
+class DatabaseClient:
+    def __init__(self, connection_string: str) -> None:
+        self.connection_string = connection_string
+
+
+class Factory:
+    def get_database_client(self) -> DatabaseClient:
+        # Use singleton to ensure the same connection string gets the same client
+        return singleton(DatabaseClient, "postgresql://localhost:5432/mydb")
+
+    def get_other_database_client(self) -> DatabaseClient:
+        # Different connection string = different cached instance
+        return singleton(DatabaseClient, "postgresql://localhost:5432/otherdb")
+
+
+# Container will resolve DatabaseClient through factory methods
+container = Container(Factory())
+
+# Multiple calls to provide() return the same instance for the same connection string
+client1 = container.provide(DatabaseClient)
+client2 = container.provide(DatabaseClient)
+assert client1 is client2  # Same instance
+
+# But different connection strings in factory methods create different instances
+other_client = container.provide(DatabaseClient)  # This would need a different factory method
+```
+
+Notes:
+- The cache key includes: the class, positional args, and keyword args (order-independent for keywords).
+- Use `singleton` in factory methods when you want argument-keyed singletons within your DI container.
+- Perfect for database connections, HTTP clients, or any resource that should be shared per configuration.
+
 ### 🔒 Thread safety
 
 The `Container` is thread-safe with respect to mocks. Mocks configured after the container has been created are stored in thread-local storage, so changes made to mocks in one thread do not affect other threads.
