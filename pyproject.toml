@@ -1,6 +1,6 @@
 [project]
 name = "pysyringe"
-version = "1.0.1"
+dynamic = ["version"]
 description = "An opinionated dependency injection library for Python"
 authors = [
     {name = "Hugo Chinchilla", email = "hugoasecas@gmail.com"},
@@ -144,8 +144,17 @@ skip_empty = true
 fail_under = 95
 
 [build-system]
-requires = ["hatchling>=1.24.2"]
+requires = ["hatchling>=1.24.2", "hatch-vcs>=0.4"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+# Accept tags like v1.2.3 and strip leading 'v'
+tag-pattern = "^v(?P<version>.*)$"
+version-file = "pysyringe/__init__.py"
+template = "__version__ = \"{version}\"\n"
 
 [tool.pytest.ini_options]
 testpaths = "tests"
