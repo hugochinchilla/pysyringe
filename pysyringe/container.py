@@ -49,15 +49,19 @@ class ThreadLocalMockStore:
 
 
 class _Resolver:
-    def __init__(self, factory: object) -> None:
+    def __init__(self, factory: object | None) -> None:
         self.factory = factory
         self.mock_store = ThreadLocalMockStore()
         self.aliases: dict = {}
         self.never_provide: list[type] = []
-        self._factory_by_return_type: dict[type, Callable] = {
-            _TypeHelper.get_return_type(factory): factory
-            for factory in self.__build_factories()
-        }
+        self._factory_by_return_type: dict[type, Callable] = (
+            {
+                _TypeHelper.get_return_type(factory): factory
+                for factory in self.__build_factories()
+            }
+            if self.factory is not None
+            else {}
+        )
 
     def resolve(self, cls: type[T]) -> T | _Unresolved:  # noqa: PLR0911
         try:
@@ -90,6 +94,8 @@ class _Resolver:
         return cast(T, factory())
 
     def __build_factories(self) -> list[Callable]:
+        if self.factory is None:
+            return []
         attrs = [
             getattr(self.factory, x) for x in dir(self.factory) if not x.startswith("_")
         ]
@@ -107,7 +113,7 @@ class _Resolver:
 
 
 class Container:
-    def __init__(self, factory: object) -> None:
+    def __init__(self, factory: object | None = None) -> None:
         self._resolver = _Resolver(factory)
 
     def never_provide(self, cls: type[T]) -> None:

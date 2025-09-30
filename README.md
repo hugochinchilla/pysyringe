@@ -158,7 +158,7 @@ class Calendar(CalendarInterface):
 
 
 # 2) Create the container and configure an alias
-container = Container(factory=object())       # No factory needed for this example
+container = Container()                       # No factory needed for this example
 container.alias(CalendarInterface, Calendar)  # resolve CalendarInterface -> Calendar
 
 

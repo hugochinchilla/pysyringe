@@ -171,6 +171,28 @@ class ContainerTest:
         with pytest.raises(UnknownDependencyError):
             container.provide(Service)
 
+    def test_container_without_factory_supports_inference_and_alias(self):
+        class A:
+            pass
+
+        class B:
+            def __init__(self, a: A) -> None:
+                self.a = a
+
+        container = Container(factory=None)
+        # Pure inference
+        instance_b = container.provide(B)
+        assert isinstance(instance_b, B)
+        assert isinstance(instance_b.a, A)
+
+        # Alias without factory
+        class Interface:
+            pass
+
+        container.alias(Interface, A)
+        instance_interface = container.provide(Interface)
+        assert isinstance(instance_interface, A)
+
     def test_thread_local_mocks_do_not_leak_between_threads(self):
         from concurrent.futures import ThreadPoolExecutor
 
