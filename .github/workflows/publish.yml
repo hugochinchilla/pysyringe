@@ -29,6 +29,14 @@ jobs:
           uv run pytest
           uv build
 
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
