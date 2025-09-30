@@ -174,10 +174,6 @@ class Factory:
         # Use singleton to ensure the same connection string gets the same client
         return singleton(DatabaseClient, "postgresql://localhost:5432/mydb")
 
-    def get_other_database_client(self) -> DatabaseClient:
-        # Different connection string = different cached instance
-        return singleton(DatabaseClient, "postgresql://localhost:5432/otherdb")
-
 
 # Container will resolve DatabaseClient through factory methods
 container = Container(Factory())
@@ -187,8 +183,6 @@ client1 = container.provide(DatabaseClient)
 client2 = container.provide(DatabaseClient)
 assert client1 is client2  # Same instance
 
-# But different connection strings in factory methods create different instances
-other_client = container.provide(DatabaseClient)  # This would need a different factory method
 ```
 
 Notes:
