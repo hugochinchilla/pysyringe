@@ -155,6 +155,7 @@ source = "vcs"
 tag-pattern = "^v(?P<version>.*)$"
 version-file = "pysyringe/__init__.py"
 template = "__version__ = \"{version}\"\n"
+write = true
 
 [tool.pytest.ini_options]
 testpaths = "tests"
