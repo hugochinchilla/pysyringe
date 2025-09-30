@@ -25,6 +25,8 @@ jobs:
 
       - name: Build wheel and sdist
         run: |
+          uv sync --group dev
+          uv run pytest
           uv build
 
       - name: Publish to PyPI
