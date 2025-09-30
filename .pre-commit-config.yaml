@@ -35,20 +35,20 @@ repos:
   - repo: local
     hooks:
       - id: check-lockfile
-        name: Checking poetry.lock
+        name: Checking uv.lock
         language: system
-        entry: "poetry check --lock"
+        entry: "uv lock --check"
         pass_filenames: false
 
       - id: mypy
         name: Checking types with mypy
         language: system
-        entry: "mypy ."
+        entry: "uv run mypy ."
         pass_filenames: false
 
       - id: test
         name: Running test suite
         language: system
-        entry: "coverage run -m pytest"
+        entry: "uv run coverage run -m pytest"
         pass_filenames: false
         stages: [pre-push]

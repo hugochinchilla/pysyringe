@@ -7,20 +7,23 @@ authors = [
 ]
 readme = "README.md"
 
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "coverage>=7.3",
+    "pre-commit>=3.4.0",
+    "ruff>=0.2.0",
+    "mypy>=1.6.1",
+    "pytest>=8.3.5",
+]
+
 [project.urls]
 homepage = "https://github.com/hugochinchilla/pysyringe"
 repository = "https://github.com/hugochinchilla/pysyringe"
 issues = "https://github.com/hugochinchilla/pysyringe/issues"
 
-[tool.poetry.dependencies]
-python = "~3.12"
-
-[tool.poetry.group.dev.dependencies]
-coverage = "^7.3"
-pre-commit = "^3.4.0"
-ruff = "^0.2.0"
-mypy = "^1.6.1"
-pytest = "^8.3.5"
 
 [tool.ruff]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
@@ -141,8 +144,8 @@ skip_empty = true
 fail_under = 95
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling>=1.24.2"]
+build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = "tests"
