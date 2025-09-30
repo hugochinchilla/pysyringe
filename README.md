@@ -95,3 +95,15 @@ def test_create_user():
 
     assert user_repository.get_by_email("john.doe@example.org")
 ```
+
+### Thread safety
+
+The `Container` is thread-safe with respect to mocks. Mocks configured after the container has been created are stored in thread-local storage, so changes made to mocks in one thread do not affect other threads.
+
+- **Shared across all threads**: `alias(...)`, `never_provide(...)`, and the factory configuration (methods on your factory used for resolution).
+- **Thread-local**: `use_mock(...)` and `clear_mocks()` operate only on the calling thread's mock store.
+
+Implications:
+- Using `use_mock(SomeType, mock_instance)` in one thread will not change what another thread receives for `SomeType`.
+- Calling `clear_mocks()` clears only the current thread's mocks.
+- To share a behavior globally across threads, prefer `alias(...)` or implement a factory method instead of relying on mocks.

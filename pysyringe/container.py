@@ -1,4 +1,5 @@
 import inspect
+import threading
 import typing
 from collections.abc import Callable
 from types import UnionType
@@ -24,10 +25,32 @@ class UnresolvableUnionTypeError(Exception):
         )
 
 
+class ThreadLocalMockStore:
+    """Thread-local storage for mocks to ensure thread safety."""
+
+    def __init__(self) -> None:
+        self._local = threading.local()
+
+    def get_mocks(self) -> dict:
+        """Get the mocks dictionary for the current thread."""
+        if not hasattr(self._local, "mocks"):
+            self._local.mocks = {}
+        return cast(dict, self._local.mocks)
+
+    def set_mock(self, cls: type, mock: Any) -> None:
+        """Set a mock for a class in the current thread."""
+        mocks = self.get_mocks()
+        mocks[cls] = mock
+
+    def clear_mocks(self) -> None:
+        """Clear all mocks for the current thread."""
+        self._local.mocks = {}
+
+
 class _Resolver:
     def __init__(self, factory: object) -> None:
         self.factory = factory
-        self.mocks: dict = {}
+        self.mock_store = ThreadLocalMockStore()
         self.aliases: dict = {}
         self.never_provide: list[type] = []
 
@@ -38,8 +61,9 @@ class _Resolver:
         except TypeError:
             return _Unresolved()
 
-        if cls in self.mocks:
-            return cast(T, self.mocks[cls])
+        mocks = self.mock_store.get_mocks()
+        if cls in mocks:
+            return cast(T, mocks[cls])
 
         if cls in self.aliases:
             return self.resolve(self.aliases[cls])
@@ -97,10 +121,10 @@ class Container:
         return injector.inject(function)
 
     def clear_mocks(self) -> None:
-        self._resolver.mocks = {}
+        self._resolver.mock_store.clear_mocks()
 
     def use_mock(self, cls: type[T], mock: T) -> None:
-        self._resolver.mocks[cls] = mock
+        self._resolver.mock_store.set_mock(cls, mock)
 
     def alias(self, interface: type, implementation: type) -> None:
         self._resolver.aliases[interface] = implementation

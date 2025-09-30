@@ -170,3 +170,32 @@ class ContainerTest:
 
         with pytest.raises(UnknownDependencyError):
             container.provide(Service)
+
+    def test_thread_local_mocks_do_not_leak_between_threads(self):
+        from concurrent.futures import ThreadPoolExecutor
+
+        container = Container(DatabaseFactory())
+
+        def thread_one() -> object:
+            mock_database = object()
+            container.use_mock(Database, mock_database)
+            service = container.provide(DatabaseService)
+            # Sanity check within the same thread
+            assert service.dependency is mock_database
+            return mock_database
+
+        def thread_two() -> DatabaseService:
+            service: DatabaseService = container.provide(DatabaseService)
+            return service
+
+        # Run first thread that sets the mock
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            mock_from_thread_one = pool.submit(thread_one).result()
+
+        # After the first thread completes, start a second thread that should
+        # not see the mock set by the first thread
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            service_from_thread_two = pool.submit(thread_two).result()
+
+        assert service_from_thread_two.dependency is not mock_from_thread_one
+        assert isinstance(service_from_thread_two.dependency, Database)
