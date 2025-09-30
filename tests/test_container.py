@@ -7,6 +7,7 @@ from pysyringe.container import (
     UnknownDependencyError,
     UnresolvableUnionTypeError,
 )
+from pysyringe.singleton import singleton
 
 
 class EmptyFactory:
@@ -192,6 +193,26 @@ class ContainerTest:
         container.alias(Interface, A)
         instance_interface = container.provide(Interface)
         assert isinstance(instance_interface, A)
+
+    def test_container_with_factory_using_singleton_helper(self):
+        class DatabaseClient:
+            def __init__(self, connection_string: str) -> None:
+                self.connection_string = connection_string
+
+        class Factory:
+            def get_database_client(self) -> DatabaseClient:
+                # Use singleton to ensure same connection string = same instance
+                return singleton(DatabaseClient, "postgresql://localhost:5432/mydb")
+
+        container = Container(Factory())
+
+        # Multiple calls should return the same instance
+        client1 = container.provide(DatabaseClient)
+        client2 = container.provide(DatabaseClient)
+
+        assert client1 is client2
+        assert isinstance(client1, DatabaseClient)
+        assert client1.connection_string == "postgresql://localhost:5432/mydb"
 
     def test_thread_local_mocks_do_not_leak_between_threads(self):
         from concurrent.futures import ThreadPoolExecutor
