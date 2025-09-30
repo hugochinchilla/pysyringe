@@ -146,10 +146,11 @@ def test_create_user():
 
 PySyringe includes a lightweight resolution cache to speed up dependency resolution without caching instances.
 
-- What is cached:
+**What is cached:**
   - A precomputed map of factory methods keyed by their return type (built once at `Container` initialization) for O(1) lookups.
   - Constructor parameter introspection is LRU-cached to avoid repeated signature parsing and type disambiguation.
-- What is NOT cached:
+
+**What is NOT cached:**
   - Resolved instances. The cache accelerates how dependencies are located and wired, not the objects produced.
 
 This means singleton semantics or any custom sharing strategy you define remain unchanged. The cache only reduces overhead during resolution.
