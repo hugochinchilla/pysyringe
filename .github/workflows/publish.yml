@@ -27,12 +27,9 @@ jobs:
 
       - name: Build wheel and sdist
         run: |
-          git checkout ${{ github.ref }}
-          git reset --hard ${{ github.ref }}
           uv sync --group dev
           uv run pytest
-          git status
-          git diff
+          git reset --hard ${{ github.ref }}
           uv build
 
       - name: Create GitHub Release
