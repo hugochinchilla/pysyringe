@@ -96,6 +96,18 @@ def test_create_user():
     assert user_repository.get_by_email("john.doe@example.org")
 ```
 
+### Resolution cache
+
+PySyringe includes a lightweight resolution cache to speed up dependency resolution without caching instances.
+
+- What is cached:
+  - A precomputed map of factory methods keyed by their return type (built once at `Container` initialization) for O(1) lookups.
+  - Constructor parameter introspection is LRU-cached to avoid repeated signature parsing and type disambiguation.
+- What is NOT cached:
+  - Resolved instances. The cache accelerates how dependencies are located and wired, not the objects produced.
+
+This means singleton semantics or any custom sharing strategy you define remain unchanged. The cache only reduces overhead during resolution.
+
 ### Thread safety
 
 The `Container` is thread-safe with respect to mocks. Mocks configured after the container has been created are stored in thread-local storage, so changes made to mocks in one thread do not affect other threads.

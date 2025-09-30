@@ -1,7 +1,8 @@
+import functools
 import inspect
 import threading
 import typing
-from collections.abc import Callable
+from collections.abc import Callable, Hashable
 from types import UnionType
 from typing import Any, TypeVar, cast
 
@@ -53,6 +54,10 @@ class _Resolver:
         self.mock_store = ThreadLocalMockStore()
         self.aliases: dict = {}
         self.never_provide: list[type] = []
+        self._factory_by_return_type: dict[type, Callable] = {
+            _TypeHelper.get_return_type(factory): factory
+            for factory in self.__build_factories()
+        }
 
     def resolve(self, cls: type[T]) -> T | _Unresolved:  # noqa: PLR0911
         try:
@@ -79,13 +84,12 @@ class _Resolver:
         return _Unresolved()
 
     def __make_from_factory(self, cls: type[T]) -> T | None:
-        for factory in self.__get_factories():
-            if cls == _TypeHelper.get_return_type(factory):
-                return cast(T, factory())
+        factory = self._factory_by_return_type.get(cls)
+        if factory is None:
+            return None
+        return cast(T, factory())
 
-        return None
-
-    def __get_factories(self) -> list[Callable]:
+    def __build_factories(self) -> list[Callable]:
         attrs = [
             getattr(self.factory, x) for x in dir(self.factory) if not x.startswith("_")
         ]
@@ -183,13 +187,19 @@ class _Injector:
 class _TypeHelper:
     @classmethod
     def get_constructor_arguments(cls, subject: type[T]) -> list[tuple]:
+        return cls._cached_constructor_arguments(cast(Hashable, subject))
+
+    @staticmethod
+    @functools.lru_cache(maxsize=512)
+    def _cached_constructor_arguments(key: Hashable) -> list[tuple]:
+        subject = cast(type, key)
         try:
             parameters = inspect.signature(subject).parameters.values()
         except ValueError:
             return []
 
         return [
-            (p.name, cls._desambiguate(p.annotation))
+            (p.name, _TypeHelper._desambiguate(p.annotation))
             for p in parameters
             if p.name != "return"
         ]
