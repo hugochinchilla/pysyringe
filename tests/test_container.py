@@ -214,6 +214,19 @@ class ContainerTest:
         assert isinstance(client1, DatabaseClient)
         assert client1.connection_string == "postgresql://localhost:5432/mydb"
 
+    def test_resolve_with_non_class_type_handles_typeerror(self):
+        """Test that resolve() handles TypeError when issubclass() fails with non-class types."""
+        # Create a resolver with a never_provide list that will cause issubclass to fail
+        container = Container(factory=None)
+        container.never_provide(
+            "not_a_class"
+        )  # This will cause TypeError in issubclass
+
+        # This should not raise an exception, but return _Unresolved
+        # because issubclass() will raise TypeError for non-class types
+        with pytest.raises(UnknownDependencyError):
+            container.provide("not_a_class")
+
     def test_thread_local_mocks_do_not_leak_between_threads(self):
         from concurrent.futures import ThreadPoolExecutor
 
