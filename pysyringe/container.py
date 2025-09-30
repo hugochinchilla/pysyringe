@@ -94,8 +94,6 @@ class _Resolver:
         return cast(T, factory())
 
     def __build_factories(self) -> list[Callable]:
-        if self.factory is None:
-            return []
         attrs = [
             getattr(self.factory, x) for x in dir(self.factory) if not x.startswith("_")
         ]
