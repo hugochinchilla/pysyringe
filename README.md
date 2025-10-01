@@ -1,7 +1,7 @@
 # PySyringe
 
 [![Tests](https://github.com/hugochinchilla/pysyringe/actions/workflows/test.yml/badge.svg)](https://github.com/hugochinchilla/pysyringe/actions/workflows/test.yml)
-[![Coverage](https://codecov.io/gh/hugochinchilla/pysyringe/branch/main/graph/badge.svg)](https://codecov.io/gh/hugochinchilla/pysyringe)
+[![Coverage](https://codecov.io/gh/hugochinchilla/pysyringe/graph/badge.svg?token=SN3JSCBB4U)](https://codecov.io/gh/hugochinchilla/pysyringe)
 [![PyPI version](https://badge.fury.io/py/pysyringe.svg)](https://badge.fury.io/py/pysyringe)
 
 An opinionated dependency injection library for Python.
