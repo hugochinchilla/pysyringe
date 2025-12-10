@@ -255,3 +255,14 @@ class ContainerTest:
 
         assert service_from_thread_two.dependency is not mock_from_thread_one
         assert isinstance(service_from_thread_two.dependency, Database)
+
+    def test_init_service_with_default_argument(self):
+        class Service:
+            def __init__(self, data: list[str] | None = None) -> None:
+                self.data = data or []
+
+        container = Container()
+
+        instance = container.provide(Service)
+
+        assert instance.data == []

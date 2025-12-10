@@ -14,6 +14,9 @@ class _Unresolved:
     pass
 
 
+_unresolved = _Unresolved()
+
+
 class UnknownDependencyError(Exception):
     def __init__(self, type_: type) -> None:
         super().__init__(f"Container does not know how to provide {type_}")
@@ -63,19 +66,21 @@ class _Resolver:
             else {}
         )
 
-    def resolve(self, cls: type[T]) -> T | _Unresolved:  # noqa: PLR0911
+    def resolve(
+        self, cls: type[T], default: T | _Unresolved = _unresolved
+    ) -> T | _Unresolved:
         try:
             if issubclass(cls, tuple(self.never_provide)):
-                return _Unresolved()
+                return default
         except TypeError:
-            return _Unresolved()
+            return default
 
         mocks = self.mock_store.get_mocks()
         if cls in mocks:
             return cast(T, mocks[cls])
 
         if cls in self.aliases:
-            return self.resolve(self.aliases[cls])
+            return self.resolve(self.aliases[cls], default)
 
         instance = self.__make_from_factory(cls)
         if instance:
@@ -85,7 +90,7 @@ class _Resolver:
         if instance:
             return instance
 
-        return _Unresolved()
+        return default
 
     def __make_from_factory(self, cls: type[T]) -> T | None:
         factory = self._factory_by_return_type.get(cls)
@@ -100,14 +105,21 @@ class _Resolver:
         return [attr for attr in attrs if callable(attr)]
 
     def __make_from_inference(self, cls: type[T]) -> T | None:
-        dependencies = {}
-        for arg_name, arg_type in _TypeHelper.get_constructor_arguments(cls):
-            resolved = self.resolve(arg_type)
+        args = []
+        for _, arg_type, default in _TypeHelper.get_constructor_args(cls):
+            resolved = self.resolve(arg_type, default)
             if isinstance(resolved, _Unresolved):
                 return None
-            dependencies[arg_name] = resolved
+            args.append(resolved)
 
-        return cls(**dependencies)
+        kwargs = {}
+        for arg_name, arg_type, default in _TypeHelper.get_constructor_kwargs(cls):
+            resolved = self.resolve(arg_type, default)
+            if isinstance(resolved, _Unresolved):
+                return None
+            kwargs[arg_name] = resolved
+
+        return cls(*args, **kwargs)
 
 
 class Container:
@@ -190,12 +202,12 @@ class _Injector:
 
 class _TypeHelper:
     @classmethod
-    def get_constructor_arguments(cls, subject: type[T]) -> list[tuple]:
-        return cls._cached_constructor_arguments(cast(Hashable, subject))
+    def get_constructor_kwargs(cls, subject: type[T]) -> list[tuple]:
+        return cls._cached_constructor_kwargs(cast(Hashable, subject))
 
     @staticmethod
     @functools.lru_cache(maxsize=512)
-    def _cached_constructor_arguments(key: Hashable) -> list[tuple]:
+    def _cached_constructor_kwargs(key: Hashable) -> list[tuple]:
         subject = cast(type, key)
         try:
             parameters = inspect.signature(subject).parameters.values()
@@ -203,9 +215,38 @@ class _TypeHelper:
             return []
 
         return [
-            (p.name, _TypeHelper._desambiguate(p.annotation))
+            (
+                p.name,
+                _TypeHelper._desambiguate(p.annotation),
+                _TypeHelper._default_or_unresolved(p.default, p.empty),
+            )
+            for p in parameters
+            if p.name != "return" and p.kind is not p.POSITIONAL_ONLY
+        ]
+
+    @classmethod
+    def get_constructor_args(cls, subject: type[T]) -> list[tuple]:
+        return cls._cached_constructor_args(cast(Hashable, subject))
+
+    @staticmethod
+    @functools.lru_cache(maxsize=512)
+    def _cached_constructor_args(key: Hashable) -> list[tuple]:
+        subject = cast(type, key)
+        try:
+            parameters = inspect.signature(subject).parameters.values()
+        except ValueError:
+            return []
+
+        return [
+            (
+                p.name,
+                _TypeHelper._desambiguate(p.annotation),
+                _TypeHelper._default_or_unresolved(p.default, p.empty),
+            )
             for p in parameters
             if p.name != "return"
+            and p.kind is p.POSITIONAL_ONLY
+            and p.annotation is not p.empty
         ]
 
     @classmethod
@@ -215,6 +256,12 @@ class _TypeHelper:
                 return cls._resolve_optional(type_)
             raise UnresolvableUnionTypeError(type_)
         return type_
+
+    @classmethod
+    def _default_or_unresolved(cls, default: T, empty: Any) -> T | _Unresolved:
+        if default is empty:
+            return _Unresolved()
+        return default
 
     @classmethod
     def _is_union(cls, type_: T) -> bool:
