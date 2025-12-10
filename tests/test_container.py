@@ -266,3 +266,36 @@ class ContainerTest:
         instance = container.provide(Service)
 
         assert instance.data == []
+
+    def test_override_context_manager_replaces_dependency_while_inside_with_statement(
+        self,
+    ):
+        mock_database = object()
+        container = Container(DatabaseFactory())
+        with container.overrides({Database: mock_database}):
+            service = container.provide(DatabaseService)
+
+        assert service.dependency is mock_database
+
+    def test_override_context_manager_stops_replacing_dependency_after_with_statement(
+        self,
+    ):
+        mock_database = object()
+        container = Container(DatabaseFactory())
+        with container.overrides({Database: mock_database}):
+            pass
+
+        service = container.provide(DatabaseService)
+
+        assert service.dependency is not mock_database
+
+    def test_override_single_dependency(self):
+        mock_database = object()
+        container = Container(DatabaseFactory())
+
+        with container.override(Database, mock_database):
+            service = container.provide(DatabaseService)
+        non_mocked = container.provide(DatabaseService)
+
+        assert service.dependency is mock_database
+        assert non_mocked.dependency is not mock_database

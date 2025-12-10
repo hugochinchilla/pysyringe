@@ -3,6 +3,7 @@ import inspect
 import threading
 import typing
 from collections.abc import Callable, Hashable
+from contextlib import contextmanager
 from types import UnionType
 from typing import Any, TypeVar, cast
 
@@ -145,6 +146,22 @@ class Container:
 
     def use_mock(self, cls: type[T], mock: T) -> None:
         self._resolver.mock_store.set_mock(cls, mock)
+
+    @contextmanager
+    def overrides(self, override_map: dict[type[T], T]) -> typing.Iterator[None]:
+        temp_resolver = _Resolver(self._resolver.factory)
+        for class_type, implementation in override_map.items():
+            temp_resolver.mock_store.set_mock(class_type, implementation)
+        original_resolver = self._resolver
+        self._resolver = temp_resolver
+        yield
+        self._resolver = original_resolver
+        del temp_resolver
+
+    @contextmanager
+    def override(self, cls: type[T], mock: T) -> typing.Iterator[None]:
+        with self.overrides({cls: mock}):
+            yield
 
     def alias(self, interface: type, implementation: type) -> None:
         self._resolver.aliases[interface] = implementation

@@ -119,7 +119,29 @@ if __name__ == "__main__":
     app.run(debug=True)
 ```
 
-### 5) Test with mocks
+### 5.1) Test with mocks (new syntax)
+
+Mocks are thread-local. Configure them per-test and clear afterwards.
+
+```python
+import pytest
+from pysyringe.container import Container
+from myapp.domain import UserRepository
+from myapp.usecases import SignupUserService
+from myapp.infra.testing import InMemoryUserRepository
+
+
+def test_create_user():
+    user_repository = InMemoryUserRepository()
+    with container.override(UserRepository, user_repository):
+        service = container.provide(SignupUserService)
+
+    service.signup("John Doe", "john.doe@example.org")
+
+    assert user_repository.get_by_email("john.doe@example.org")
+```
+
+### 5.2) Test with mocks (old syntax)
 
 Mocks are thread-local. Configure them per-test and clear afterwards.
 
