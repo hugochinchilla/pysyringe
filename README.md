@@ -17,7 +17,7 @@ A container that does not rely on adding decorators to your domain classes. It o
 - 🔒 **Thread-safe mocks**: mocks are stored per-thread; aliases and blacklists are global.
 - 🧰 **Aliases & blacklists**: map interfaces to implementations and mark types as non-creatable.
 - ⚡ **Resolution cache**: caches factory lookups and constructor introspection (not instances).
-- ✅ **100% test coverage**: comprehensive test suite ensuring reliability and correctness.
+- ✅ **High test coverage**: comprehensive test suite ensuring reliability and correctness.
 
 ## 📦 Installation
 

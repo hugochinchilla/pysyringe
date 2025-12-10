@@ -232,11 +232,24 @@ class _TypeHelper:
                 _TypeHelper._default_or_unresolved(p.default, p.empty),
             )
             for p in parameters
-            if p.name != "return" and p.kind is not p.POSITIONAL_ONLY
+            if _TypeHelper._is_resolvable(p)
         ]
 
     @classmethod
-    def _desambiguate(cls, type_: type[T]) -> type[T]:
+    def _is_resolvable(cls, p: inspect.Parameter) -> bool:
+        if p.name == "return":
+            return False
+
+        if p.kind is p.POSITIONAL_ONLY:
+            return False
+
+        if p.annotation is p.empty:
+            return False
+
+        return True
+
+    @classmethod
+    def _desambiguate(cls, type_: type[T]) -> type[T] | _Unresolved:
         if cls._is_union(type_):
             if cls._is_optional(type_):
                 return cls._resolve_optional(type_)
