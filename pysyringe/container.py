@@ -106,13 +106,7 @@ class _Resolver:
         return [attr for attr in attrs if callable(attr)]
 
     def __make_from_inference(self, cls: type[T]) -> T | None:
-        args = []
-        for _, arg_type, default in _TypeHelper.get_constructor_args(cls):
-            resolved = self.resolve(arg_type, default)
-            if isinstance(resolved, _Unresolved):
-                return None
-            args.append(resolved)
-
+        args = ()
         kwargs = {}
         for arg_name, arg_type, default in _TypeHelper.get_constructor_kwargs(cls):
             resolved = self.resolve(arg_type, default)
@@ -239,31 +233,6 @@ class _TypeHelper:
             )
             for p in parameters
             if p.name != "return" and p.kind is not p.POSITIONAL_ONLY
-        ]
-
-    @classmethod
-    def get_constructor_args(cls, subject: type[T]) -> list[tuple]:
-        return cls._cached_constructor_args(cast(Hashable, subject))
-
-    @staticmethod
-    @functools.lru_cache(maxsize=512)
-    def _cached_constructor_args(key: Hashable) -> list[tuple]:
-        subject = cast(type, key)
-        try:
-            parameters = inspect.signature(subject).parameters.values()
-        except ValueError:
-            return []
-
-        return [
-            (
-                p.name,
-                _TypeHelper._desambiguate(p.annotation),
-                _TypeHelper._default_or_unresolved(p.default, p.empty),
-            )
-            for p in parameters
-            if p.name != "return"
-            and p.kind is p.POSITIONAL_ONLY
-            and p.annotation is not p.empty
         ]
 
     @classmethod
