@@ -237,9 +237,6 @@ class _TypeHelper:
 
     @classmethod
     def _is_resolvable(cls, p: inspect.Parameter) -> bool:
-        if p.name == "return":
-            return False
-
         if p.kind is p.POSITIONAL_ONLY:
             return False
 
