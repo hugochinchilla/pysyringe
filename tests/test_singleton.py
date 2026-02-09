@@ -1,7 +1,7 @@
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
-from pysyringe.singleton import singleton, thread_local_singleton
+from pysyringe.singleton import _Cache, singleton, thread_local_singleton
 
 
 class EmptyFactory:
@@ -38,6 +38,31 @@ class SingletonTest:
         other_instance = singleton(DummyClass, "another value")
 
         assert instance != other_instance
+
+    def test_cache_returns_existing_entry_found_inside_lock(self):
+        """Cover the inner check of double-checked locking in _Cache.get_or_create."""
+        key = ("__test_inner_lock_key__",)
+        sentinel = object()
+
+        # Acquire the lock first so get_or_create blocks
+        _Cache._lock.acquire()
+
+        def delayed_get():
+            # This will pass the outer check (key not in entries),
+            # then block on the lock. When we release it, key will
+            # already be in entries, so the inner check returns it.
+            return _Cache.get_or_create(key, lambda: None)
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(delayed_get)
+            # Insert the entry while the other thread is waiting for the lock
+            _Cache._entries[key] = sentinel
+            _Cache._lock.release()
+
+            result = future.result()
+
+        assert result is sentinel
+        del _Cache._entries[key]
 
     def test_singleton_is_thread_safe(self):
         call_count = 0

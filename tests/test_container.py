@@ -299,3 +299,31 @@ class ContainerTest:
 
         assert service.dependency is mock_database
         assert non_mocked.dependency is not mock_database
+
+    def test_positional_only_params_are_skipped_during_inference(self):
+        class Dep:
+            pass
+
+        class Service:
+            def __init__(self, dep: Dep, /) -> None:
+                self.dep = dep
+
+        container = Container(EmptyFactory())
+
+        # positional-only param is skipped, so Service() is called with no args
+        # which fails because dep is required but positional-only
+        with pytest.raises(TypeError):
+            container.provide(Service)
+
+    def test_inject_function_without_return_type(self):
+        class Dependency:
+            pass
+
+        def function(dep: Dependency):
+            return dep
+
+        container = Container(EmptyFactory())
+        injected_function = container.inject(function)
+        result = injected_function()
+
+        assert isinstance(result, Dependency)
