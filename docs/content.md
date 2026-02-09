@@ -72,7 +72,7 @@ When you call `container.provide(SomeType)`, the container follows a strict reso
 1. **Blacklist check** --- If the type was registered with `never_provide()`, resolution stops immediately.
 2. **Mock store** --- Check the current thread's mock store. If a mock was registered via `use_mock()` or `override()`, return it.
 3. **Alias lookup** --- If the type was registered with `alias()`, recursively resolve the mapped implementation type.
-4. **Factory methods** --- Look up a factory method by return-type annotation. If found, call it and return the result.
+4. **Factory methods** --- Look up a factory method by return-type annotation. If found, call it and return the result. If the factory method accepts a `Container` parameter, the container passes itself.
 5. **Constructor inference** --- Inspect the type's constructor, recursively resolve each parameter by its type hint, and construct the instance.
 
 If none of these strategies succeed, an `UnknownDependencyError` is raised.
@@ -125,6 +125,38 @@ Key rules for factory methods:
 - Methods must have a **return-type annotation**. The container matches requested types to factory methods by this annotation.
 - The method name does not matter---only the return type is used for matching.
 - Factory methods can use `singleton()` or `thread_local_singleton()` to control instance sharing.
+
+### Container-Aware Factories {#container-aware-factories}
+
+Factory methods can receive the `Container` itself as an argument. If a factory method declares a parameter typed as `Container`, the container passes itself when invoking the factory. This lets factories resolve sub-dependencies through the container, benefiting from inference, mocks, overrides, and aliases.
+
+```python
+from pysyringe.container import Container
+
+
+class AppConfig:
+    def __init__(self) -> None:
+        self.smtp_host = "smtp.example.org"
+        self.smtp_port = 25
+
+
+class Factory:
+    def get_mailer(self, container: Container) -> EmailSender:
+        config = container.provide(AppConfig)
+        return EmailSender(config.smtp_host, config.smtp_port)
+
+
+container = Container(Factory())
+mailer = container.provide(EmailSender)  # Factory receives the container
+```
+
+This is especially useful when:
+
+- A factory needs dependencies that are themselves resolvable by the container (via inference or other factories).
+- You want factory-created objects to respect active `override()` or `use_mock()` replacements during tests.
+- You need to combine factory logic with the container's recursive resolution.
+
+Factory methods without a `Container` parameter continue to work exactly as before---called with no arguments.
 
 ## Constructor Inference {#inference}
 

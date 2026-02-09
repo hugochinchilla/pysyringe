@@ -53,6 +53,22 @@ class Factory:
         return LoggingEmailSender()
 ```
 
+Factory methods can also receive the container to resolve sub-dependencies. Just add a `container: Container` parameter:
+
+```python
+from pysyringe.container import Container
+
+
+class Factory:
+    def get_mailer(self, container: Container) -> EmailSenderInterface:
+        config = container.provide(AppConfig)
+        if config.environment == "production":
+            return SmtpEmailSender(config.smtp_host, config.smtp_port)
+        return LoggingEmailSender()
+```
+
+The container passes itself automatically when it detects a `Container`-typed parameter. This means your factory benefits from the container's full resolution capabilities (inference, mocks, overrides, and aliases). Factory methods without a `Container` parameter continue to work as before.
+
 ### 2) Create the container
 
 ```python

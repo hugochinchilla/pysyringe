@@ -20,7 +20,7 @@ NAV_SECTIONS = [
     ("Getting Started", ["introduction", "installation", "quick-start"]),
     (
         "Core Concepts",
-        ["container", "resolution", "factories", "inference", "aliases", "blacklist"],
+        ["container", "resolution", "factories", "container-aware-factories", "inference", "aliases", "blacklist"],
     ),
     ("Dependency Injection", ["inject-decorator", "provide"]),
     ("Singletons", ["singleton", "thread-local-singleton"]),

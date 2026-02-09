@@ -17,7 +17,7 @@
   <div class="topnav-links">
     <a href="https://github.com/hugochinchilla/pysyringe">GitHub</a>
     <a href="https://pypi.org/project/pysyringe/">PyPI</a>
-    <span class="badge">v1.4</span>
+    <span class="badge">v1.5</span>
   </div>
 </header>
 
@@ -40,6 +40,7 @@
       <a href="#container">The Container</a>
       <a href="#resolution">How Resolution Works</a>
       <a href="#factories">Factory Methods</a>
+      <a href="#container-aware-factories">Container-Aware Factories</a>
       <a href="#inference">Constructor Inference</a>
       <a href="#aliases">Aliases</a>
       <a href="#blacklist">Blacklist</a>
@@ -173,7 +174,7 @@
 <li><strong>Blacklist check</strong> &mdash; If the type was registered with <code>never_provide()</code>, resolution stops immediately.</li>
 <li><strong>Mock store</strong> &mdash; Check the current thread&rsquo;s mock store. If a mock was registered via <code>use_mock()</code> or <code>override()</code>, return it.</li>
 <li><strong>Alias lookup</strong> &mdash; If the type was registered with <code>alias()</code>, recursively resolve the mapped implementation type.</li>
-<li><strong>Factory methods</strong> &mdash; Look up a factory method by return-type annotation. If found, call it and return the result.</li>
+<li><strong>Factory methods</strong> &mdash; Look up a factory method by return-type annotation. If found, call it and return the result. If the factory method accepts a <code>Container</code> parameter, the container passes itself.</li>
 <li><strong>Constructor inference</strong> &mdash; Inspect the type&rsquo;s constructor, recursively resolve each parameter by its type hint, and construct the instance.</li>
 </ol>
 <p>If none of these strategies succeed, an <code>UnknownDependencyError</code> is raised.</p>
@@ -224,6 +225,34 @@
 <li>The method name does not matter&mdash;only the return type is used for matching.</li>
 <li>Factory methods can use <code>singleton()</code> or <code>thread_local_singleton()</code> to control instance sharing.</li>
 </ul>
+<h3 id="container-aware-factories" class="section-anchor">Container-Aware Factories</h3>
+<p>Factory methods can receive the <code>Container</code> itself as an argument. If a factory method declares a parameter typed as <code>Container</code>, the container passes itself when invoking the factory. This lets factories resolve sub-dependencies through the container, benefiting from inference, mocks, overrides, and aliases.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe.container</span><span class="w"> </span><span class="kn">import</span> <span class="n">Container</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AppConfig</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">smtp_host</span> <span class="o">=</span> <span class="s2">&quot;smtp.example.org&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">smtp_port</span> <span class="o">=</span> <span class="mi">25</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Factory</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_mailer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">container</span><span class="p">:</span> <span class="n">Container</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EmailSender</span><span class="p">:</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">provide</span><span class="p">(</span><span class="n">AppConfig</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">EmailSender</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">smtp_host</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">smtp_port</span><span class="p">)</span>
+
+
+<span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">(</span><span class="n">Factory</span><span class="p">())</span>
+<span class="n">mailer</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">provide</span><span class="p">(</span><span class="n">EmailSender</span><span class="p">)</span>  <span class="c1"># Factory receives the container</span>
+</code></pre></div>
+
+<p>This is especially useful when:</p>
+<ul>
+<li>A factory needs dependencies that are themselves resolvable by the container (via inference or other factories).</li>
+<li>You want factory-created objects to respect active <code>override()</code> or <code>use_mock()</code> replacements during tests.</li>
+<li>You need to combine factory logic with the container&rsquo;s recursive resolution.</li>
+</ul>
+<p>Factory methods without a <code>Container</code> parameter continue to work exactly as before&mdash;called with no arguments.</p>
 <h2 id="inference" class="section-anchor">Constructor Inference</h2>
 <p>When no factory method or alias matches, PySyringe falls back to <strong>constructor inference</strong>. It inspects the class&rsquo;s <code>__init__</code> parameters, resolves each by type hint, and constructs the instance.</p>
 <div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Logger</span><span class="p">:</span>
