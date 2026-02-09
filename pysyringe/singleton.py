@@ -11,15 +11,10 @@ class _Cache:
 
     @classmethod
     def get_or_create(cls, key: CacheKey[T], factory: object) -> T:
-        if key in cls._entries:
-            return cls._entries[key]
-
         with cls._lock:
-            if key in cls._entries:
-                return cls._entries[key]
-            instance = factory()
-            cls._entries[key] = instance
-            return instance
+            if key not in cls._entries:
+                cls._entries[key] = factory()
+            return cls._entries[key]
 
 
 def singleton(type_: type[T], *type_args, **type_kwargs) -> T:
