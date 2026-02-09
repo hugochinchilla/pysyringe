@@ -611,3 +611,39 @@ class ThreadLocalSingletonWithMocksTest:
         result = container.provide(Service)
         assert result is not outer_mock
         assert result is not inner_mock
+
+    def test_overrides_preserves_aliases(self):
+        class Interface:
+            pass
+
+        class Implementation(Interface):
+            pass
+
+        class Service:
+            def __init__(self, dep: Interface) -> None:
+                self.dep = dep
+
+        container = Container()
+        container.alias(Interface, Implementation)
+
+        mock_impl = Implementation()
+        with container.override(Implementation, mock_impl):
+            service = container.provide(Service)
+
+        assert service.dep is mock_impl
+
+    def test_overrides_preserves_never_provide(self):
+        class Forbidden:
+            pass
+
+        class Service:
+            def __init__(self, dep: Forbidden) -> None:
+                self.dep = dep
+
+        container = Container()
+        container.never_provide(Forbidden)
+
+        mock_service = Service(Forbidden())
+        with container.override(Service, mock_service):
+            with pytest.raises(UnknownDependencyError):
+                container.provide(Forbidden)

@@ -172,6 +172,8 @@ class Container:
         # (or earlier in the test) remains visible inside the override.
         for cls, mock in self._resolver.mock_store.get_mocks().items():
             temp_resolver.mock_store.set_mock(cls, mock)
+        temp_resolver.aliases = dict(self._resolver.aliases)
+        temp_resolver.never_provide = list(self._resolver.never_provide)
         for class_type, implementation in override_map.items():
             temp_resolver.mock_store.set_mock(class_type, implementation)
         original_resolver = self._resolver
