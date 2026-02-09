@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PySyringe - Dependency Injection for Python</title>
+  <meta name="description" content="An opinionated, zero-decorator dependency injection library for Python. Keep your domain clean, inject only at call sites.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Top navigation -->
+<header class="topnav">
+  <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">&#9776;</button>
+  <a href="#" class="topnav-brand">PySyringe</a>
+  <div class="topnav-links">
+    <a href="https://github.com/hugochinchilla/pysyringe">GitHub</a>
+    <a href="https://pypi.org/project/pysyringe/">PyPI</a>
+    <span class="badge">v1.3</span>
+  </div>
+</header>
+
+<!-- Mobile overlay -->
+<div class="overlay" onclick="toggleSidebar()"></div>
+
+<div class="layout">
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <nav>
+    <div class="nav-section">
+      <div class="nav-section-title">Getting Started</div>
+      <a href="#introduction">Introduction</a>
+      <a href="#installation">Installation</a>
+      <a href="#quick-start">Quick Start</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Core Concepts</div>
+      <a href="#container">The Container</a>
+      <a href="#resolution">How Resolution Works</a>
+      <a href="#factories">Factory Methods</a>
+      <a href="#inference">Constructor Inference</a>
+      <a href="#aliases">Aliases</a>
+      <a href="#blacklist">Blacklist</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Dependency Injection</div>
+      <a href="#inject-decorator">The @inject Decorator</a>
+      <a href="#provide">Providing Dependencies</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Singletons</div>
+      <a href="#singleton">Global Singleton</a>
+      <a href="#thread-local-singleton">Thread-Local Singleton</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Testing</div>
+      <a href="#mocks">Mocks &amp; Overrides</a>
+      <a href="#override-context">Override Context Manager</a>
+      <a href="#legacy-mocks">Legacy Mock API</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Advanced</div>
+      <a href="#thread-safety">Thread Safety</a>
+      <a href="#resolution-cache">Resolution Cache</a>
+      <a href="#optional-types">Optional &amp; Union Types</a>
+      <a href="#errors">Error Handling</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Reference</div>
+      <a href="#api-container">Container API</a>
+      <a href="#api-singleton">Singleton API</a>
+      <a href="#api-exceptions">Exceptions</a>
+    </div>
+  </nav>
+</aside>
+
+<!-- Main content -->
+<main class="main">
+
+<!-- Hero -->
+<div class="hero">
+  <h1>PySyringe</h1>
+  <p class="tagline">An opinionated dependency injection library for Python.<br>Keep your domain clean. Inject only at call sites.</p>
+  <div class="install-cmd">
+    <span class="prompt">$</span> pip install pysyringe
+  </div>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h3>Zero-Decorator DI</h3>
+      <p>Your domain classes stay free of framework annotations. Injection happens only at the infrastructure boundary.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Inference-Based Wiring</h3>
+      <p>Auto-wire constructor dependencies from type hints. No registration boilerplate needed.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Thread-Safe by Design</h3>
+      <p>Thread-local mocks, double-checked locking singletons, and per-thread instance caching built in.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Test-Friendly</h3>
+      <p>Replace any dependency with a mock using context managers. Mocks never leak between threads.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Factory Support</h3>
+      <p>Wire complex dependencies using factory methods. The container matches methods by return-type annotation.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Zero Dependencies</h3>
+      <p>Pure Python. No external packages required. Works with Python 3.11+.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Introduction -->
+<h2 id="introduction" class="section-anchor">Introduction</h2>
+
+<p>PySyringe is a dependency injection container that does <strong>not</strong> require decorators on your domain classes. Instead of polluting your business logic with framework-specific annotations, PySyringe wraps only the views in your infrastructure layer&mdash;keeping your domain and application layer decoupled from the framework and the container.</p>
+
+<p>The philosophy is simple: your domain code should not know that a DI container exists. Injection happens at the call site (HTTP handlers, CLI commands, message consumers) using the <code>@container.inject</code> decorator or explicit <code>container.provide()</code> calls.</p>
+
+<!-- Installation -->
+<h2 id="installation" class="section-anchor">Installation</h2>
+
+<pre><code><span class="prompt">$ </span>pip install pysyringe</code></pre>
+
+<p>PySyringe requires <strong>Python 3.11</strong> or later and has no external dependencies.</p>
+
+<!-- Quick Start -->
+<h2 id="quick-start" class="section-anchor">Quick Start</h2>
+
+<p>Here is a complete Flask application using PySyringe for dependency injection:</p>
+
+<pre><code><span class="kw">from</span> datetime <span class="kw">import</span> datetime, timezone
+<span class="kw">from</span> flask <span class="kw">import</span> Flask
+<span class="kw">from</span> pysyringe.container <span class="kw">import</span> Container
+
+
+<span class="cmt"># 1. Define an interface and its implementation</span>
+<span class="kw">class</span> <span class="fn">CalendarInterface</span>:
+    <span class="kw">def</span> <span class="fn">now</span>(<span class="bi">self</span>) -> datetime:
+        <span class="kw">raise</span> <span class="bi">NotImplementedError</span>
+
+
+<span class="kw">class</span> <span class="fn">Calendar</span>(CalendarInterface):
+    <span class="kw">def</span> <span class="fn">now</span>(<span class="bi">self</span>) -> datetime:
+        <span class="kw">return</span> datetime.now(timezone.utc)
+
+
+<span class="cmt"># 2. Create and configure the container</span>
+container = Container()
+container.alias(CalendarInterface, Calendar)
+
+
+<span class="cmt"># 3. Inject dependencies at the call site</span>
+app = Flask(__name__)
+
+<span class="dec">@app.get</span>(<span class="str">"/now"</span>)
+<span class="dec">@container.inject</span>
+<span class="kw">def</span> <span class="fn">get_now</span>(calendar: CalendarInterface):
+    <span class="kw">return</span> {<span class="str">"now"</span>: calendar.now().isoformat()}
+</code></pre>
+
+<p>That's it. The <code>CalendarInterface</code> and <code>Calendar</code> classes are plain Python&mdash;no decorators, no registration. The container resolves the dependency at the call site.</p>
+
+<!-- The Container -->
+<h2 id="container" class="section-anchor">The Container</h2>
+
+<p>The <code>Container</code> class is the central piece of PySyringe. It manages dependency resolution, mocking, and injection.</p>
+
+<pre><code><span class="kw">from</span> pysyringe.container <span class="kw">import</span> Container
+
+<span class="cmt"># Without a factory (inference-only)</span>
+container = Container()
+
+<span class="cmt"># With a factory object</span>
+container = Container(MyFactory())
+</code></pre>
+
+<p>The optional <code>factory</code> argument is any object whose public methods serve as factory functions. The container inspects these methods at initialization, indexing them by return-type annotation for O(1) lookup.</p>
+
+<!-- How Resolution Works -->
+<h2 id="resolution" class="section-anchor">How Resolution Works</h2>
+
+<p>When you call <code>container.provide(SomeType)</code>, the container follows a strict resolution order:</p>
+
+<ol>
+  <li><strong>Blacklist check</strong> &mdash; If the type was registered with <code>never_provide()</code>, resolution stops immediately.</li>
+  <li><strong>Mock store</strong> &mdash; Check the current thread's mock store. If a mock was registered via <code>use_mock()</code> or <code>override()</code>, return it.</li>
+  <li><strong>Alias lookup</strong> &mdash; If the type was registered with <code>alias()</code>, recursively resolve the mapped implementation type.</li>
+  <li><strong>Factory methods</strong> &mdash; Look up a factory method by return-type annotation. If found, call it and return the result.</li>
+  <li><strong>Constructor inference</strong> &mdash; Inspect the type's constructor, recursively resolve each parameter by its type hint, and construct the instance.</li>
+</ol>
+
+<p>If none of these strategies succeed, an <code>UnknownDependencyError</code> is raised.</p>
+
+<div class="callout">
+  <strong>Note</strong>
+  Resolution does not cache instances. Each call to <code>provide()</code> creates a new instance (unless you use singleton helpers in your factory). The resolution <em>process</em> (parameter introspection, factory lookup) is cached for performance.
+</div>
+
+<!-- Factory Methods -->
+<h2 id="factories" class="section-anchor">Factory Methods</h2>
+
+<p>Factories give you full control over how dependencies are constructed. A factory is any object&mdash;the container discovers its public methods and indexes them by their return-type annotation.</p>
+
+<pre><code><span class="kw">from</span> pysyringe.container <span class="kw">import</span> Container
+<span class="kw">from</span> pysyringe.singleton <span class="kw">import</span> singleton
+
+
+<span class="kw">class</span> <span class="fn">EmailSender</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="bi">self</span>, host: <span class="bi">str</span>, port: <span class="bi">int</span>) -> <span class="kw">None</span>:
+        <span class="bi">self</span>.host = host
+        <span class="bi">self</span>.port = port
+
+
+<span class="kw">class</span> <span class="fn">DatabaseClient</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="bi">self</span>, connection_string: <span class="bi">str</span>) -> <span class="kw">None</span>:
+        <span class="bi">self</span>.connection_string = connection_string
+
+
+<span class="kw">class</span> <span class="fn">Factory</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="bi">self</span>, environment: <span class="bi">str</span>) -> <span class="kw">None</span>:
+        <span class="bi">self</span>.environment = environment
+
+    <span class="kw">def</span> <span class="fn">get_mailer</span>(<span class="bi">self</span>) -> EmailSender:
+        <span class="kw">if</span> <span class="bi">self</span>.environment == <span class="str">"production"</span>:
+            <span class="kw">return</span> EmailSender(<span class="str">"smtp.example.org"</span>, <span class="bi">25</span>)
+        <span class="kw">return</span> EmailSender(<span class="str">"localhost"</span>, <span class="bi">1025</span>)
+
+    <span class="kw">def</span> <span class="fn">get_database</span>(<span class="bi">self</span>) -> DatabaseClient:
+        <span class="kw">return</span> singleton(DatabaseClient, <span class="str">"postgresql://localhost/mydb"</span>)
+
+
+container = Container(Factory(<span class="str">"development"</span>))
+
+mailer = container.provide(EmailSender)       <span class="cmt"># Uses factory method</span>
+db = container.provide(DatabaseClient)        <span class="cmt"># Uses factory + singleton</span>
+</code></pre>
+
+<p>Key rules for factory methods:</p>
+<ul>
+  <li>Methods must be <strong>public</strong> (no leading underscore).</li>
+  <li>Methods must have a <strong>return-type annotation</strong>. The container matches requested types to factory methods by this annotation.</li>
+  <li>The method name does not matter&mdash;only the return type is used for matching.</li>
+  <li>Factory methods can use <code>singleton()</code> or <code>thread_local_singleton()</code> to control instance sharing.</li>
+</ul>
+
+<!-- Constructor Inference -->
+<h2 id="inference" class="section-anchor">Constructor Inference</h2>
+
+<p>When no factory method or alias matches, PySyringe falls back to <strong>constructor inference</strong>. It inspects the class's <code>__init__</code> parameters, resolves each by type hint, and constructs the instance.</p>
+
+<pre><code><span class="kw">class</span> <span class="fn">Logger</span>:
+    <span class="kw">pass</span>
+
+
+<span class="kw">class</span> <span class="fn">UserRepository</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="bi">self</span>, logger: Logger) -> <span class="kw">None</span>:
+        <span class="bi">self</span>.logger = logger
+
+
+<span class="kw">class</span> <span class="fn">UserService</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="bi">self</span>, repo: UserRepository, logger: Logger) -> <span class="kw">None</span>:
+        <span class="bi">self</span>.repo = repo
+        <span class="bi">self</span>.logger = logger
+
+
+container = Container()
+service = container.provide(UserService)
+
+<span class="cmt"># UserService was constructed with:</span>
+<span class="cmt">#   - a UserRepository (auto-constructed with its own Logger)</span>
+<span class="cmt">#   - a Logger</span>
+</code></pre>
+
+<p>Inference rules:</p>
+<ul>
+  <li>Parameters <strong>must have type annotations</strong>. Unannotated parameters are skipped.</li>
+  <li><strong>Positional-only</strong> parameters are skipped.</li>
+  <li>Parameters with <strong>default values</strong> use the default if the type cannot be resolved.</li>
+  <li>Resolution is <strong>recursive</strong>&mdash;nested dependencies are resolved automatically.</li>
+</ul>
+
+<!-- Aliases -->
+<h2 id="aliases" class="section-anchor">Aliases</h2>
+
+<p>Aliases map an interface (or abstract class) to a concrete implementation. When the container is asked to provide the interface type, it resolves the mapped implementation instead.</p>
+
+<pre><code><span class="kw">class</span> <span class="fn">NotificationService</span>:
+    <span class="kw">def</span> <span class="fn">send</span>(<span class="bi">self</span>, message: <span class="bi">str</span>) -> <span class="kw">None</span>:
+        <span class="kw">raise</span> <span class="bi">NotImplementedError</span>
+
+
+<span class="kw">class</span> <span class="fn">SlackNotificationService</span>(NotificationService):
+    <span class="kw">def</span> <span class="fn">send</span>(<span class="bi">self</span>, message: <span class="bi">str</span>) -> <span class="kw">None</span>:
+        ...  <span class="cmt"># send via Slack API</span>
+
+
+container = Container()
+container.alias(NotificationService, SlackNotificationService)
+
+service = container.provide(NotificationService)
+<span class="cmt"># Returns a SlackNotificationService instance</span>
+</code></pre>
+
+<p>The implementation is constructed via inference, so its dependencies are resolved recursively. You don't need a factory method for aliased types.</p>
+
+<!-- Blacklist -->
+<h2 id="blacklist" class="section-anchor">Blacklist</h2>
+
+<p>Use <code>never_provide()</code> to tell the container it should never attempt to construct certain types. This is useful for framework-provided types that should not be auto-wired.</p>
+
+<pre><code><span class="kw">from</span> django.http <span class="kw">import</span> HttpRequest, HttpResponse
+
+container.never_provide(HttpRequest)
+container.never_provide(HttpResponse)
+</code></pre>
+
+<p>When a blacklisted type appears as a constructor parameter, the container skips it. If the parameter has a default value, the default is used. If it doesn't, inference for the enclosing type fails gracefully.</p>
+
+<!-- The @inject Decorator -->
+<h2 id="inject-decorator" class="section-anchor">The @inject Decorator</h2>
+
+<p>The <code>@container.inject</code> decorator is the primary way to wire dependencies into your application's entry points (HTTP handlers, CLI commands, etc.).</p>
+
+<pre><code><span class="dec">@app.get</span>(<span class="str">"/users"</span>)
+<span class="dec">@container.inject</span>
+<span class="kw">def</span> <span class="fn">list_users</span>(user_service: UserService, page: <span class="bi">int</span> = <span class="bi">1</span>):
+    <span class="kw">return</span> user_service.list(page=page)
+</code></pre>
+
+<p>How it works:</p>
+<ol>
+  <li>The decorator inspects the function's signature.</li>
+  <li>For each parameter, it attempts to resolve the type from the container.</li>
+  <li>Parameters that <strong>can</strong> be resolved are pre-filled automatically.</li>
+  <li>Parameters that <strong>cannot</strong> be resolved remain as normal function parameters.</li>
+  <li>The function's <code>__signature__</code> is updated to reflect only the remaining parameters.</li>
+</ol>
+
+<p>In the example above, <code>user_service</code> is injected by the container while <code>page</code> remains a normal parameter.</p>
+
+<div class="callout">
+  <strong>Note</strong>
+  Dependencies are resolved at <strong>call time</strong>, not at decoration time. This means mocks set after the decorator is applied will still be picked up.
+</div>
+
+<!-- Providing Dependencies -->
+<h2 id="provide" class="section-anchor">Providing Dependencies</h2>
+
+<p>You can also request dependencies directly without using the decorator:</p>
+
+<pre><code>service = container.provide(UserService)
+</code></pre>
+
+<p>This is useful for programmatic access to dependencies, such as in application setup code, background workers, or management commands.</p>
+
+<p>If the type cannot be resolved, an <code>UnknownDependencyError</code> is raised.</p>
+
+<!-- Global Singleton -->
+<h2 id="singleton" class="section-anchor">Global Singleton</h2>
+
+<p>The <code>singleton()</code> helper creates or retrieves a globally shared instance. It is designed for use inside factory methods to ensure a single instance is shared across all threads.</p>
+
+<pre><code><span class="kw">from</span> pysyringe.singleton <span class="kw">import</span> singleton
+
+
+<span class="kw">class</span> <span class="fn">DatabaseClient</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="bi">self</span>, connection_string: <span class="bi">str</span>) -> <span class="kw">None</span>:
+        <span class="bi">self</span>.connection_string = connection_string
+
+
+<span class="kw">class</span> <span class="fn">Factory</span>:
+    <span class="kw">def</span> <span class="fn">get_database</span>(<span class="bi">self</span>) -> DatabaseClient:
+        <span class="kw">return</span> singleton(DatabaseClient, <span class="str">"postgresql://localhost:5432/mydb"</span>)
+
+
+container = Container(Factory())
+
+client1 = container.provide(DatabaseClient)
+client2 = container.provide(DatabaseClient)
+<span class="kw">assert</span> client1 <span class="kw">is</span> client2  <span class="cmt"># Same instance everywhere</span>
+</code></pre>
+
+<p>The cache key includes the class, positional arguments, and keyword arguments (order-independent for keywords). Different arguments produce different instances.</p>
+
+<p>Creation is <strong>thread-safe</strong> using double-checked locking&mdash;concurrent threads will never produce duplicate instances for the same key.</p>
+
+<p>Best for: connection pools, HTTP clients, configuration objects, and other thread-safe resources that should be shared globally.</p>
+
+<!-- Thread-Local Singleton -->
+<h2 id="thread-local-singleton" class="section-anchor">Thread-Local Singleton</h2>
+
+<p>The <code>thread_local_singleton()</code> helper creates or retrieves a per-thread instance. Each thread gets its own instance; within the same thread, repeated calls return the same object.</p>
+
+<pre><code><span class="kw">from</span> pysyringe.singleton <span class="kw">import</span> thread_local_singleton
+
+
+<span class="kw">class</span> <span class="fn">DatabaseSession</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="bi">self</span>, dsn: <span class="bi">str</span>) -> <span class="kw">None</span>:
+        <span class="bi">self</span>.dsn = dsn
+
+
+<span class="kw">class</span> <span class="fn">Factory</span>:
+    <span class="kw">def</span> <span class="fn">get_session</span>(<span class="bi">self</span>) -> DatabaseSession:
+        <span class="kw">return</span> thread_local_singleton(DatabaseSession, <span class="str">"postgresql://localhost/mydb"</span>)
+</code></pre>
+
+<p>Best for: database sessions, request-scoped state, and other resources that are not thread-safe and should not be shared across threads.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Helper</th>
+      <th>Scope</th>
+      <th>Thread Safety</th>
+      <th>Use Case</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>singleton()</code></td>
+      <td>Global</td>
+      <td>Double-checked locking</td>
+      <td>Connection pools, HTTP clients</td>
+    </tr>
+    <tr>
+      <td><code>thread_local_singleton()</code></td>
+      <td>Per-thread</td>
+      <td>Thread-local storage</td>
+      <td>Database sessions, request state</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- Mocks & Overrides -->
+<h2 id="mocks" class="section-anchor">Mocks &amp; Overrides</h2>
+
+<p>PySyringe makes it easy to replace dependencies in tests. The recommended approach uses the <code>override()</code> context manager.</p>
+
+<!-- Override Context Manager -->
+<h3 id="override-context" class="section-anchor">Override Context Manager</h3>
+
+<p>The <code>override()</code> and <code>overrides()</code> context managers temporarily replace dependencies for the duration of a <code>with</code> block. When the block exits, the original behavior is automatically restored.</p>
+
+<h4>Single dependency</h4>
+
+<pre><code><span class="kw">def</span> <span class="fn">test_user_signup</span>():
+    mock_repo = InMemoryUserRepository()
+
+    <span class="kw">with</span> container.override(UserRepository, mock_repo):
+        service = container.provide(SignupUserService)
+        service.signup(<span class="str">"Jane"</span>, <span class="str">"jane@example.org"</span>)
+
+    <span class="kw">assert</span> mock_repo.get_by_email(<span class="str">"jane@example.org"</span>)
+</code></pre>
+
+<h4>Multiple dependencies</h4>
+
+<pre><code><span class="kw">def</span> <span class="fn">test_with_multiple_overrides</span>():
+    <span class="kw">with</span> container.overrides({
+        UserRepository: InMemoryUserRepository(),
+        EmailSender: FakeEmailSender(),
+    }):
+        service = container.provide(SignupUserService)
+        service.signup(<span class="str">"Jane"</span>, <span class="str">"jane@example.org"</span>)
+</code></pre>
+
+<div class="callout">
+  <strong>Recommended</strong>
+  Prefer <code>override()</code> / <code>overrides()</code> over the legacy <code>use_mock()</code> API. Context managers guarantee cleanup, preventing mock leakage between tests.
+</div>
+
+<!-- Legacy Mock API -->
+<h3 id="legacy-mocks" class="section-anchor">Legacy Mock API</h3>
+
+<p>The <code>use_mock()</code> and <code>clear_mocks()</code> methods provide a manual mock API. You are responsible for clearing mocks after each test.</p>
+
+<pre><code><span class="kw">import</span> pytest
+
+
+<span class="dec">@pytest.fixture</span>(autouse=<span class="kw">True</span>)
+<span class="kw">def</span> <span class="fn">clear_container_mocks</span>():
+    <span class="kw">yield</span>
+    container.clear_mocks()
+
+
+<span class="kw">def</span> <span class="fn">test_user_signup</span>():
+    container.use_mock(UserRepository, InMemoryUserRepository())
+    service = container.provide(SignupUserService)
+    service.signup(<span class="str">"Jane"</span>, <span class="str">"jane@example.org"</span>)
+</code></pre>
+
+<!-- Thread Safety -->
+<h2 id="thread-safety" class="section-anchor">Thread Safety</h2>
+
+<p>PySyringe is designed with thread safety in mind:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Scope</th>
+      <th>Details</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>alias()</code></td>
+      <td>Global</td>
+      <td>Shared across all threads. Configure at startup.</td>
+    </tr>
+    <tr>
+      <td><code>never_provide()</code></td>
+      <td>Global</td>
+      <td>Shared across all threads. Configure at startup.</td>
+    </tr>
+    <tr>
+      <td>Factory methods</td>
+      <td>Global</td>
+      <td>Indexed at container initialization. Shared across threads.</td>
+    </tr>
+    <tr>
+      <td><code>use_mock()</code></td>
+      <td>Per-thread</td>
+      <td>Stored in thread-local storage. No cross-thread leakage.</td>
+    </tr>
+    <tr>
+      <td><code>clear_mocks()</code></td>
+      <td>Per-thread</td>
+      <td>Clears only the current thread's mocks.</td>
+    </tr>
+    <tr>
+      <td><code>singleton()</code></td>
+      <td>Global</td>
+      <td>Thread-safe creation via double-checked locking.</td>
+    </tr>
+    <tr>
+      <td><code>thread_local_singleton()</code></td>
+      <td>Per-thread</td>
+      <td>One instance per thread via <code>threading.local()</code>.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Implications:</p>
+<ul>
+  <li>Calling <code>use_mock(SomeType, mock)</code> in one thread does not affect other threads.</li>
+  <li>Calling <code>clear_mocks()</code> clears only the current thread's mocks.</li>
+  <li>To share behavior globally, use <code>alias()</code> or a factory method instead of mocks.</li>
+</ul>
+
+<!-- Resolution Cache -->
+<h2 id="resolution-cache" class="section-anchor">Resolution Cache</h2>
+
+<p>PySyringe includes a lightweight cache to speed up dependency resolution without affecting instance semantics.</p>
+
+<h4>What is cached</h4>
+<ul>
+  <li>A precomputed map of factory methods keyed by their return type, built once at container initialization for O(1) lookups.</li>
+  <li>Constructor parameter introspection, cached via <code>functools.lru_cache</code> (512 entries) to avoid repeated signature parsing.</li>
+</ul>
+
+<h4>What is NOT cached</h4>
+<ul>
+  <li><strong>Instances.</strong> Each call to <code>provide()</code> creates a fresh instance unless you use <code>singleton()</code> or <code>thread_local_singleton()</code> in your factory.</li>
+</ul>
+
+<p>This means your singleton semantics, custom sharing strategies, and factory logic remain fully in your control. The cache only reduces the overhead of figuring out <em>how</em> to construct dependencies.</p>
+
+<!-- Optional & Union Types -->
+<h2 id="optional-types" class="section-anchor">Optional &amp; Union Types</h2>
+
+<p>PySyringe handles Optional and Union types as follows:</p>
+
+<h4>Optional types</h4>
+<p><code>Optional[T]</code> (or <code>T | None</code>) is automatically unwrapped. The container resolves the non-None type.</p>
+
+<pre><code><span class="kw">class</span> <span class="fn">Service</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="bi">self</span>, logger: Logger | <span class="kw">None</span> = <span class="kw">None</span>) -> <span class="kw">None</span>:
+        <span class="bi">self</span>.logger = logger
+
+<span class="cmt"># The container resolves Logger for the logger parameter.</span>
+<span class="cmt"># If Logger cannot be resolved, it uses the default value (None).</span>
+</code></pre>
+
+<h4>Union types</h4>
+<p>Non-Optional union types like <code>A | B</code> are <strong>not supported</strong> and will raise an <code>UnresolvableUnionTypeError</code>. The container cannot determine which type to provide when multiple options exist.</p>
+
+<pre><code><span class="kw">class</span> <span class="fn">Service</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="bi">self</span>, store: RedisStore | MemoryStore) -> <span class="kw">None</span>:
+        ...
+
+<span class="cmt"># Raises UnresolvableUnionTypeError</span>
+<span class="cmt"># Solution: use an alias or define a factory method instead.</span>
+</code></pre>
+
+<!-- Error Handling -->
+<h2 id="errors" class="section-anchor">Error Handling</h2>
+
+<p>PySyringe raises clear exceptions when resolution fails:</p>
+
+<h4>UnknownDependencyError</h4>
+<p>Raised when <code>container.provide(SomeType)</code> cannot resolve the requested type through any strategy (mocks, aliases, factory, or inference).</p>
+
+<pre><code><span class="kw">from</span> pysyringe.container <span class="kw">import</span> UnknownDependencyError
+
+<span class="kw">try</span>:
+    container.provide(SomeUnknownType)
+<span class="kw">except</span> UnknownDependencyError <span class="kw">as</span> e:
+    <span class="bi">print</span>(e)  <span class="cmt"># "Container does not know how to provide &lt;class 'SomeUnknownType'&gt;"</span>
+</code></pre>
+
+<h4>UnresolvableUnionTypeError</h4>
+<p>Raised during resolution when a constructor parameter uses a non-Optional union type like <code>A | B</code>.</p>
+
+<pre><code><span class="kw">from</span> pysyringe.container <span class="kw">import</span> UnresolvableUnionTypeError
+<span class="cmt"># "Cannot resolve [A | B]: remove UnionType or define a factory"</span>
+</code></pre>
+
+<!-- API Reference: Container -->
+<h2 id="api-container" class="section-anchor">Container API</h2>
+
+<h3>Container(factory=None)</h3>
+<code class="api-signature">Container(factory: object | None = None)</code>
+<p>Create a new dependency injection container.</p>
+<table class="param-table">
+  <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>factory</td><td>object | None</td><td>An optional factory object. Public methods with return-type annotations are indexed as factory methods. If <code>None</code>, the container uses inference only.</td></tr>
+  </tbody>
+</table>
+
+<h3>container.provide(cls)</h3>
+<code class="api-signature">provide(cls: type[T]) -> T</code>
+<p>Resolve and return an instance of the requested type. Raises <code>UnknownDependencyError</code> if the type cannot be resolved.</p>
+<table class="param-table">
+  <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>cls</td><td>type[T]</td><td>The type to resolve.</td></tr>
+  </tbody>
+</table>
+
+<h3>container.inject(function)</h3>
+<code class="api-signature">inject(function: Callable) -> Callable</code>
+<p>Decorator that injects resolvable dependencies into a function. Returns a wrapped function with resolved parameters pre-filled. Unresolvable parameters remain as normal parameters. The returned function's <code>__signature__</code> is updated to reflect only the remaining parameters.</p>
+<table class="param-table">
+  <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>function</td><td>Callable</td><td>The function to decorate.</td></tr>
+  </tbody>
+</table>
+
+<h3>container.alias(interface, implementation)</h3>
+<code class="api-signature">alias(interface: type, implementation: type) -> None</code>
+<p>Map an interface type to a concrete implementation. When the interface is requested, the container resolves the implementation instead (via inference).</p>
+<table class="param-table">
+  <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>interface</td><td>type</td><td>The abstract type or interface.</td></tr>
+    <tr><td>implementation</td><td>type</td><td>The concrete type to use.</td></tr>
+  </tbody>
+</table>
+
+<h3>container.never_provide(cls)</h3>
+<code class="api-signature">never_provide(cls: type[T]) -> None</code>
+<p>Blacklist a type so the container will never attempt to resolve it. Useful for framework types like HTTP request/response objects.</p>
+<table class="param-table">
+  <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>cls</td><td>type[T]</td><td>The type to blacklist.</td></tr>
+  </tbody>
+</table>
+
+<h3>container.override(cls, mock)</h3>
+<code class="api-signature">@contextmanager override(cls: type[T], mock: T) -> Iterator[None]</code>
+<p>Context manager that temporarily replaces a single dependency. The original behavior is restored when the <code>with</code> block exits.</p>
+<table class="param-table">
+  <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>cls</td><td>type[T]</td><td>The type to override.</td></tr>
+    <tr><td>mock</td><td>T</td><td>The replacement instance.</td></tr>
+  </tbody>
+</table>
+
+<h3>container.overrides(override_map)</h3>
+<code class="api-signature">@contextmanager overrides(override_map: dict[type[T], T]) -> Iterator[None]</code>
+<p>Context manager that temporarily replaces multiple dependencies at once.</p>
+<table class="param-table">
+  <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>override_map</td><td>dict[type, object]</td><td>A mapping of types to their replacement instances.</td></tr>
+  </tbody>
+</table>
+
+<h3>container.use_mock(cls, mock)</h3>
+<code class="api-signature">use_mock(cls: type[T], mock: T) -> None</code>
+<p>Set a mock for a type in the current thread. Thread-local: does not affect other threads. Prefer <code>override()</code> for new code.</p>
+<table class="param-table">
+  <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>cls</td><td>type[T]</td><td>The type to mock.</td></tr>
+    <tr><td>mock</td><td>T</td><td>The mock instance.</td></tr>
+  </tbody>
+</table>
+
+<h3>container.clear_mocks()</h3>
+<code class="api-signature">clear_mocks() -> None</code>
+<p>Clear all mocks for the current thread. Only affects the calling thread.</p>
+
+<!-- API Reference: Singleton -->
+<h2 id="api-singleton" class="section-anchor">Singleton API</h2>
+
+<h3>singleton(type_, *args, **kwargs)</h3>
+<code class="api-signature">singleton(type_: type[T], *type_args, **type_kwargs) -> T</code>
+<p>Create or retrieve a globally shared singleton instance. Thread-safe via double-checked locking. The cache key is the combination of the class, positional args, and keyword args.</p>
+<table class="param-table">
+  <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>type_</td><td>type[T]</td><td>The class to instantiate.</td></tr>
+    <tr><td>*type_args</td><td>Any</td><td>Positional arguments for the constructor.</td></tr>
+    <tr><td>**type_kwargs</td><td>Any</td><td>Keyword arguments for the constructor.</td></tr>
+  </tbody>
+</table>
+
+<h3>thread_local_singleton(type_, *args, **kwargs)</h3>
+<code class="api-signature">thread_local_singleton(type_: type[T], *type_args, **type_kwargs) -> T</code>
+<p>Create or retrieve a per-thread singleton instance. Each thread gets its own instance; within the same thread, repeated calls return the same object. Uses <code>threading.local()</code> for storage.</p>
+<table class="param-table">
+  <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>type_</td><td>type[T]</td><td>The class to instantiate.</td></tr>
+    <tr><td>*type_args</td><td>Any</td><td>Positional arguments for the constructor.</td></tr>
+    <tr><td>**type_kwargs</td><td>Any</td><td>Keyword arguments for the constructor.</td></tr>
+  </tbody>
+</table>
+
+<!-- API Reference: Exceptions -->
+<h2 id="api-exceptions" class="section-anchor">Exceptions</h2>
+
+<h3>UnknownDependencyError</h3>
+<code class="api-signature">class UnknownDependencyError(Exception)</code>
+<p>Raised when <code>container.provide()</code> cannot resolve the requested type.</p>
+<p>Message format: <code>"Container does not know how to provide &lt;type&gt;"</code></p>
+<pre><code><span class="kw">from</span> pysyringe.container <span class="kw">import</span> UnknownDependencyError</code></pre>
+
+<h3>UnresolvableUnionTypeError</h3>
+<code class="api-signature">class UnresolvableUnionTypeError(Exception)</code>
+<p>Raised when a constructor parameter uses a non-Optional union type (e.g. <code>A | B</code>) that the container cannot disambiguate.</p>
+<p>Message format: <code>"Cannot resolve [type]: remove UnionType or define a factory"</code></p>
+<pre><code><span class="kw">from</span> pysyringe.container <span class="kw">import</span> UnresolvableUnionTypeError</code></pre>
+
+</main>
+</div>
+
+<script>
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.querySelector('.overlay').classList.toggle('open');
+}
+
+// Active link highlighting
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      document.querySelectorAll('.sidebar a').forEach(a => {
+        a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-80px 0px -80% 0px' });
+
+document.querySelectorAll('.section-anchor').forEach(el => observer.observe(el));
+
+// Close sidebar on link click (mobile)
+document.querySelectorAll('.sidebar a').forEach(a => {
+  a.addEventListener('click', () => {
+    document.querySelector('.sidebar').classList.remove('open');
+    document.querySelector('.overlay').classList.remove('open');
+  });
+});
+</script>
+
+</body>
+</html>
