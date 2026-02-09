@@ -69,20 +69,3 @@ jobs:
         uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
-
-      - name: Update master with release artifacts
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          TAG: ${{ github.ref_name }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout master
-          git checkout "${TAG}" -- CHANGELOG.md
-          echo "__version__ = \"${VERSION}\"" > pysyringe/__init__.py
-          uv sync --group dev
-          uv run python docs/build.py
-          git checkout -- pysyringe/__init__.py
-          git add CHANGELOG.md docs/index.html
-          git commit -m "update CHANGELOG and docs for ${TAG} release"
-          git push origin master
