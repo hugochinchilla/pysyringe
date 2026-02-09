@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .cache/
+.idea/
 .coverage
 coverage.xml
 htmlcov/
