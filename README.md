@@ -17,6 +17,7 @@ A container that does not rely on adding decorators to your domain classes. It o
 - 🔒 **Thread-safe mocks**: mocks are stored per-thread; aliases and blacklists are global.
 - 🧰 **Aliases & blacklists**: map interfaces to implementations and mark types as non-creatable.
 - ⚡ **Resolution cache**: caches factory lookups and constructor introspection (not instances).
+- 🔐 **Thread-safe**: singleton creation uses double-checked locking; per-thread singletons via `thread_local_singleton`.
 - ✅ **High test coverage**: comprehensive test suite ensuring reliability and correctness.
 
 ## 📦 Installation
@@ -182,9 +183,16 @@ PySyringe includes a lightweight resolution cache to speed up dependency resolut
 
 This means singleton semantics or any custom sharing strategy you define remain unchanged. The cache only reduces overhead during resolution.
 
-### 🧷 Singleton helper
+### 🧷 Singleton helpers
 
-Use the built-in `singleton` helper in your factory methods when you want shared instances keyed by constructor arguments.
+PySyringe provides two singleton helpers for use inside your factory methods. Both cache instances keyed by the class and its constructor arguments.
+
+| Helper | Scope | Use case |
+|--------|-------|----------|
+| `singleton()` | Global (shared across threads) | Thread-safe resources like connection pools or HTTP clients |
+| `thread_local_singleton()` | Per-thread | Resources that are not safe to share, like database sessions |
+
+#### `singleton()` — shared across all threads
 
 ```python
 from pysyringe.singleton import singleton
@@ -198,23 +206,34 @@ class DatabaseClient:
 
 class Factory:
     def get_database_client(self) -> DatabaseClient:
-        # Use singleton to ensure the same connection string gets the same client
         return singleton(DatabaseClient, "postgresql://localhost:5432/mydb")
 
 
-# Container will resolve DatabaseClient through factory methods
 container = Container(Factory())
 
-# Multiple calls to provide() return the same instance for the same connection string
 client1 = container.provide(DatabaseClient)
 client2 = container.provide(DatabaseClient)
-assert client1 is client2  # Same instance
-
+assert client1 is client2  # Same instance, even across threads
 ```
 
-Notes:
+Creation is thread-safe: concurrent threads calling `singleton()` for the same key will never produce duplicate instances (double-checked locking).
+
+#### `thread_local_singleton()` — one instance per thread
+
+```python
+from pysyringe.singleton import thread_local_singleton
+
+
+class Factory:
+    def get_session(self) -> DatabaseSession:
+        return thread_local_singleton(DatabaseSession, "postgresql://localhost:5432/mydb")
+```
+
+Each thread gets its own `DatabaseSession` instance. Within the same thread, repeated calls return the same object. This is useful for resources that are not thread-safe, such as database sessions or request-scoped state.
+
+#### Notes
+
 - The cache key includes: the class, positional args, and keyword args (order-independent for keywords).
-- Use `singleton` in factory methods when you want argument-keyed singletons within your DI container.
 - Perfect for database connections, HTTP clients, or any resource that should be shared per configuration.
 
 ### 🔒 Thread safety
