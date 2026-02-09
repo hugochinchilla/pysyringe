@@ -66,6 +66,7 @@ class ThreadLocalMockStore:
 class _Resolver:
     def __init__(self, factory: object | None) -> None:
         self.factory = factory
+        self.container: "Container | None" = None
         self.mock_store = ThreadLocalMockStore()
         self.aliases: dict = {}
         self.never_provide: list[type] = []
@@ -109,6 +110,8 @@ class _Resolver:
         factory = self._factory_by_return_type.get(cls)
         if factory is None:
             return None
+        if self.container is not None and _TypeHelper.accepts_container(factory):
+            return cast(T, factory(self.container))
         return cast(T, factory())
 
     def __build_factories(self) -> list[Callable]:
@@ -139,6 +142,7 @@ class _Resolver:
 class Container:
     def __init__(self, factory: object | None = None) -> None:
         self._resolver = _Resolver(factory)
+        self._resolver.container = self
 
     def never_provide(self, cls: type[T]) -> None:
         self._resolver.never_provide.append(cls)
@@ -168,6 +172,7 @@ class Container:
     @contextmanager
     def overrides(self, override_map: dict[type[T], T]) -> typing.Iterator[None]:
         temp_resolver = _Resolver(self._resolver.factory)
+        temp_resolver.container = self
         # Carry over existing mocks so that use_mock() set by fixtures
         # (or earlier in the test) remains visible inside the override.
         for cls, mock in self._resolver.mock_store.get_mocks().items():
@@ -321,6 +326,11 @@ class _TypeHelper:
         types = set(typing.get_args(type_))
         types.remove(type(None))
         return cast(type[T], types.pop())
+
+    @staticmethod
+    def accepts_container(method: Callable) -> bool:
+        hints = typing.get_type_hints(method)
+        return any(hint is Container for name, hint in hints.items() if name != "return")
 
     @staticmethod
     def get_return_type(method: Callable) -> type:

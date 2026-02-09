@@ -352,6 +352,59 @@ class ContainerTest:
 
         assert isinstance(result, Dependency)
 
+    def test_factory_method_receives_container_when_parameter_typed_as_container(self):
+        class Config:
+            def __init__(self) -> None:
+                self.value = "from_inference"
+
+        class Service:
+            def __init__(self, config: Config) -> None:
+                self.config = config
+
+        class Factory:
+            def create_service(self, container: Container) -> Service:
+                config = container.provide(Config)
+                return Service(config)
+
+        container = Container(Factory())
+        service = container.provide(Service)
+
+        assert isinstance(service, Service)
+        assert isinstance(service.config, Config)
+        assert service.config.value == "from_inference"
+
+    def test_factory_without_container_param_still_works(self):
+        container = Container(DatabaseFactory())
+
+        db = container.provide(Database)
+
+        assert isinstance(db, Database)
+        assert db.connection_string == "sqlite://"
+
+    def test_factory_receives_container_that_respects_overrides(self):
+        class Dep:
+            def __init__(self) -> None:
+                self.source = "real"
+
+        class Service:
+            def __init__(self, dep: Dep) -> None:
+                self.dep = dep
+
+        class Factory:
+            def create_service(self, container: Container) -> Service:
+                return Service(container.provide(Dep))
+
+        container = Container(Factory())
+
+        mock_dep = Dep()
+        mock_dep.source = "mocked"
+
+        with container.override(Dep, mock_dep):
+            service = container.provide(Service)
+
+        assert service.dep is mock_dep
+        assert service.dep.source == "mocked"
+
 
 class ThreadLocalSingletonWithMocksTest:
     """Verify that thread_local_singleton factories work correctly with
