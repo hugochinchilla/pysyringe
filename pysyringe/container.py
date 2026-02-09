@@ -19,8 +19,19 @@ _unresolved = _Unresolved()
 
 
 class UnknownDependencyError(Exception):
-    def __init__(self, type_: type) -> None:
-        super().__init__(f"Container does not know how to provide {type_}")
+    def __init__(
+        self, type_: type, resolution_chain: list[tuple[type, str]] | None = None
+    ) -> None:
+        message = f"Container does not know how to provide {type_}"
+        if resolution_chain:
+            chain_lines = "\n".join(
+                f"  -> {cls.__name__} requires {param_type} (parameter '{param_name}')"
+                if not isinstance(param_type, type)
+                else f"  -> {cls.__name__} requires {param_type.__name__} (parameter '{param_name}')"
+                for cls, param_name, param_type in resolution_chain
+            )
+            message += f"\n\nResolution chain:\n{chain_lines}"
+        super().__init__(message)
 
 
 class UnresolvableUnionTypeError(Exception):
@@ -58,6 +69,7 @@ class _Resolver:
         self.mock_store = ThreadLocalMockStore()
         self.aliases: dict = {}
         self.never_provide: list[type] = []
+        self._resolution_chain: list[tuple[type, str, type]] = []
         self._factory_by_return_type: dict[type, Callable] = (
             {
                 _TypeHelper.get_return_type(factory): factory
@@ -109,9 +121,16 @@ class _Resolver:
         args = ()
         kwargs = {}
         for arg_name, arg_type, default in _TypeHelper.get_constructor_kwargs(cls):
-            resolved = self.resolve(arg_type, default)
+            self._resolution_chain.append((cls, arg_name, arg_type))
+            try:
+                resolved = self.resolve(arg_type, default)
+            except UnknownDependencyError:
+                raise
             if isinstance(resolved, _Unresolved):
-                return None
+                raise UnknownDependencyError(
+                    arg_type, resolution_chain=list(self._resolution_chain)
+                )
+            self._resolution_chain.pop()
             kwargs[arg_name] = resolved
 
         return cls(*args, **kwargs)
@@ -125,7 +144,12 @@ class Container:
         self._resolver.never_provide.append(cls)
 
     def provide(self, cls: type[T]) -> T:
-        resolved = self._resolver.resolve(cls)
+        try:
+            resolved = self._resolver.resolve(cls)
+        except UnknownDependencyError:
+            raise
+        finally:
+            self._resolver._resolution_chain.clear()
         if isinstance(resolved, _Unresolved):
             raise UnknownDependencyError(cls)
 
@@ -183,11 +207,18 @@ class _Injector:
     def __get_injectable_arguments(self, function: Callable) -> dict[str, object]:
         signature = inspect.signature(function)
         hints = typing.get_type_hints(function)
-        resolved_arguments = {
-            (p.name, self._resolver.resolve(hints.get(p.name, p.annotation)))
-            for p in signature.parameters.values()
-            if p.name != "self"
-        }
+        resolved_arguments = set()
+        for p in signature.parameters.values():
+            if p.name == "self":
+                continue
+            try:
+                resolved_arguments.add(
+                    (p.name, self._resolver.resolve(hints.get(p.name, p.annotation)))
+                )
+            except UnknownDependencyError:
+                pass
+            finally:
+                self._resolver._resolution_chain.clear()
         only_resolved = {
             (parameter_name, value)
             for (parameter_name, value) in resolved_arguments

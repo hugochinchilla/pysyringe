@@ -66,9 +66,33 @@ class ContainerTest:
 
         with pytest.raises(
             UnknownDependencyError,
-            match=r"Container does not know how to provide <class '.*\.Person'>",
+            match=r"Container does not know how to provide <class 'str'>",
         ):
             container.provide(Person)
+
+    def test_nested_resolution_error_includes_chain(self):
+        class C:
+            def __init__(self, name: str) -> None:
+                self.name = name
+
+        class B:
+            def __init__(self, c: C) -> None:
+                self.c = c
+
+        class Service:
+            def __init__(self, b: B) -> None:
+                self.b = b
+
+        container = Container(EmptyFactory())
+
+        with pytest.raises(UnknownDependencyError, match=r"str") as exc_info:
+            container.provide(Service)
+
+        message = str(exc_info.value)
+        assert "Resolution chain:" in message
+        assert "Service requires B (parameter 'b')" in message
+        assert "B requires C (parameter 'c')" in message
+        assert "C requires str (parameter 'name')" in message
 
     def test_register_and_use_factory(self):
         container = Container(DatabaseFactory())
