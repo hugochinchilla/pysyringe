@@ -20,7 +20,7 @@ A container that does not rely on adding decorators to your domain classes. It o
 - 🔒 **Thread-safe mocks**: mocks are stored per-thread; aliases and blacklists are global.
 - 🧰 **Aliases & blacklists**: map interfaces to implementations and mark types as non-creatable.
 - ⚡ **Resolution cache**: caches factory lookups and constructor introspection (not instances).
-- 🔐 **Thread-safe**: singleton creation uses double-checked locking; per-thread singletons via `thread_local_singleton`.
+- 🔐 **Thread-safe**: singleton creation uses locking; per-thread singletons via `thread_local_singleton`.
 - ✅ **High test coverage**: comprehensive test suite ensuring reliability and correctness.
 
 ## 📦 Installation
