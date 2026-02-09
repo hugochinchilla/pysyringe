@@ -1,3 +1,4 @@
+import threading
 from typing import ClassVar, TypeVar
 
 T = TypeVar("T")
@@ -6,27 +7,21 @@ CacheKey = tuple[T, ...]
 
 class _Cache:
     _entries: ClassVar[dict] = {}
+    _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @classmethod
-    def has(cls, key: CacheKey[T]) -> bool:
-        return key in cls._entries
+    def get_or_create(cls, key: CacheKey[T], factory: object) -> T:
+        if key in cls._entries:
+            return cls._entries[key]
 
-    @classmethod
-    def get(cls, key: CacheKey[T]) -> T:
-        instance: T = cls._entries[key]
-        return instance
-
-    @classmethod
-    def set(cls, key: CacheKey[T], value: T) -> None:
-        cls._entries[key] = value
+        with cls._lock:
+            if key in cls._entries:
+                return cls._entries[key]
+            instance = factory()
+            cls._entries[key] = instance
+            return instance
 
 
 def singleton(type_: type[T], *type_args, **type_kwargs) -> T:
     key = (*(type_,), *(type_args,), *tuple(*sorted(type_kwargs.items())))
-
-    if not _Cache.has(key):
-        instance: T = type_(*type_args, **type_kwargs)
-        _Cache.set(key, instance)
-
-    inst: T = _Cache.get(key)
-    return inst
+    return _Cache.get_or_create(key, lambda: type_(*type_args, **type_kwargs))
