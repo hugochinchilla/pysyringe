@@ -3,10 +3,13 @@
 [![Tests](https://github.com/hugochinchilla/pysyringe/actions/workflows/test.yml/badge.svg)](https://github.com/hugochinchilla/pysyringe/actions/workflows/test.yml)
 [![Coverage](https://codecov.io/gh/hugochinchilla/pysyringe/graph/badge.svg?token=SN3JSCBB4U)](https://codecov.io/gh/hugochinchilla/pysyringe)
 [![PyPI version](https://badge.fury.io/py/pysyringe.svg)](https://badge.fury.io/py/pysyringe)
+[![Docs](https://img.shields.io/badge/docs-pysyringe-blue)](https://www.hugochinchilla.net/pysyringe/)
 
 An opinionated dependency injection library for Python.
 
 A container that does not rely on adding decorators to your domain classes. It only wraps views in the infrastructure layer to keep your domain and app layer decoupled from the framework and the container.
+
+[Read the full documentation](https://www.hugochinchilla.net/pysyringe/)
 
 ## ✨ Features
 
