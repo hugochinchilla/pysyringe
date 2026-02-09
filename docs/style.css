@@ -318,13 +318,27 @@ pre code {
   font-size: 13.5px;
 }
 
-/* Syntax highlighting */
-.kw { color: var(--keyword); }
-.str { color: var(--string); }
-.cmt { color: var(--comment); font-style: italic; }
-.fn { color: var(--function); }
-.bi { color: var(--builtin); }
-.dec { color: var(--function); }
+/* Pygments syntax highlighting */
+.highlight { background: var(--bg-code); border-radius: var(--radius); }
+.highlight pre { background: none; border: none; margin: 0; }
+.highlight .k, .highlight .kn, .highlight .kd,
+.highlight .kc, .highlight .kr, .highlight .ow,
+.highlight .kp { color: var(--keyword); }
+.highlight .s, .highlight .s1, .highlight .s2,
+.highlight .sa, .highlight .sb, .highlight .sc,
+.highlight .sd, .highlight .se, .highlight .sh,
+.highlight .si, .highlight .sr, .highlight .ss { color: var(--string); }
+.highlight .c, .highlight .c1, .highlight .cm,
+.highlight .ch, .highlight .cs, .highlight .cp,
+.highlight .cpf { color: var(--comment); font-style: italic; }
+.highlight .nf, .highlight .fm, .highlight .nd,
+.highlight .ni { color: var(--function); }
+.highlight .nb, .highlight .bp, .highlight .mi,
+.highlight .mf, .highlight .mb, .highlight .mh,
+.highlight .mo, .highlight .nc { color: var(--builtin); }
+.highlight .o, .highlight .p { color: var(--text-code); }
+.highlight .n, .highlight .na, .highlight .nv,
+.highlight .no, .highlight .nl { color: var(--text-code); }
 
 /* API reference table */
 .api-signature {

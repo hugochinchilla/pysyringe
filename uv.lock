@@ -144,6 +144,15 @@ wheels = [
 ]
 
 [[package]]
+name = "markdown"
+version = "3.10.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b7/b1/af95bcae8549f1f3fd70faacb29075826a0d689a27f232e8cee315efa053/markdown-3.10.1.tar.gz", hash = "sha256:1c19c10bd5c14ac948c53d0d762a04e2fa35a6d58a6b7b1e6bfcbe6fefc0001a", size = 365402, upload-time = "2026-01-21T18:09:28.206Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/59/1b/6ef961f543593969d25b2afe57a3564200280528caa9bd1082eecdd7b3bc/markdown-3.10.1-py3-none-any.whl", hash = "sha256:867d788939fe33e4b736426f5b9f651ad0c0ae0ecf89df0ca5d1176c70812fe3", size = 107684, upload-time = "2026-01-21T18:09:27.203Z" },
+]
+
+[[package]]
 name = "mypy"
 version = "1.18.2"
 source = { registry = "https://pypi.org/simple" }
@@ -267,8 +276,10 @@ source = { editable = "." }
 [package.dev-dependencies]
 dev = [
     { name = "coverage" },
+    { name = "markdown" },
     { name = "mypy" },
     { name = "pre-commit" },
+    { name = "pygments" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -278,8 +289,10 @@ dev = [
 [package.metadata.requires-dev]
 dev = [
     { name = "coverage", specifier = ">=7.3" },
+    { name = "markdown", specifier = ">=3.5" },
     { name = "mypy", specifier = ">=1.6.1" },
     { name = "pre-commit", specifier = ">=3.4.0" },
+    { name = "pygments", specifier = ">=2.17" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "ruff", specifier = ">=0.2.0" },
 ]

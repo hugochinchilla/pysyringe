@@ -19,3 +19,7 @@ coverage-all:
 	uv run coverage xml
 	uv run coverage html
 	uv run coverage report -m
+
+.PHONY: docs
+docs:
+	uv run python docs/build.py
