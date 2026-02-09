@@ -168,6 +168,10 @@ class Container:
     @contextmanager
     def overrides(self, override_map: dict[type[T], T]) -> typing.Iterator[None]:
         temp_resolver = _Resolver(self._resolver.factory)
+        # Carry over existing mocks so that use_mock() set by fixtures
+        # (or earlier in the test) remains visible inside the override.
+        for cls, mock in self._resolver.mock_store.get_mocks().items():
+            temp_resolver.mock_store.set_mock(cls, mock)
         for class_type, implementation in override_map.items():
             temp_resolver.mock_store.set_mock(class_type, implementation)
         original_resolver = self._resolver

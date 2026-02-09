@@ -7,7 +7,7 @@ from pysyringe.container import (
     UnknownDependencyError,
     UnresolvableUnionTypeError,
 )
-from pysyringe.singleton import singleton
+from pysyringe.singleton import singleton, thread_local_singleton
 
 
 class EmptyFactory:
@@ -351,3 +351,263 @@ class ContainerTest:
         result = injected_function()
 
         assert isinstance(result, Dependency)
+
+
+class ThreadLocalSingletonWithMocksTest:
+    """Verify that thread_local_singleton factories work correctly with
+    both ``override`` and ``use_mock`` APIs."""
+
+    def test_override_beats_thread_local_singleton_factory(self):
+        class DbClient:
+            def __init__(self, dsn: str) -> None:
+                self.dsn = dsn
+
+        class Factory:
+            def get_db(self) -> DbClient:
+                return thread_local_singleton(DbClient, "prod://db")
+
+        container = Container(Factory())
+        mock_client = DbClient("mock://db")
+
+        with container.override(DbClient, mock_client):
+            provided = container.provide(DbClient)
+
+        assert provided is mock_client
+
+    def test_override_restores_thread_local_singleton_after_context(self):
+        class DbClient:
+            def __init__(self, dsn: str) -> None:
+                self.dsn = dsn
+
+        class Factory:
+            def get_db(self) -> DbClient:
+                return thread_local_singleton(DbClient, "prod://db")
+
+        container = Container(Factory())
+        mock_client = DbClient("mock://db")
+
+        with container.override(DbClient, mock_client):
+            pass
+
+        after = container.provide(DbClient)
+
+        assert after is not mock_client
+        assert after.dsn == "prod://db"
+
+    def test_use_mock_beats_thread_local_singleton_factory(self):
+        class DbClient:
+            def __init__(self, dsn: str) -> None:
+                self.dsn = dsn
+
+        class Factory:
+            def get_db(self) -> DbClient:
+                return thread_local_singleton(DbClient, "prod://db")
+
+        container = Container(Factory())
+        mock_client = DbClient("mock://db")
+        container.use_mock(DbClient, mock_client)
+
+        provided = container.provide(DbClient)
+
+        assert provided is mock_client
+
+    def test_use_mock_clear_restores_thread_local_singleton(self):
+        class DbClient:
+            def __init__(self, dsn: str) -> None:
+                self.dsn = dsn
+
+        class Factory:
+            def get_db(self) -> DbClient:
+                return thread_local_singleton(DbClient, "prod://db")
+
+        container = Container(Factory())
+        mock_client = DbClient("mock://db")
+        container.use_mock(DbClient, mock_client)
+        container.clear_mocks()
+
+        provided = container.provide(DbClient)
+
+        assert provided is not mock_client
+        assert provided.dsn == "prod://db"
+
+    def test_override_thread_local_singleton_does_not_leak_to_other_threads(self):
+        from concurrent.futures import ThreadPoolExecutor
+
+        class DbClient:
+            def __init__(self, dsn: str) -> None:
+                self.dsn = dsn
+
+        class Factory:
+            def get_db(self) -> DbClient:
+                return thread_local_singleton(DbClient, "prod://db")
+
+        container = Container(Factory())
+        mock_client = DbClient("mock://db")
+
+        with container.override(DbClient, mock_client):
+            # The override mock is thread-local, so another thread
+            # should NOT see it — it gets the real factory result.
+            def provide_in_thread() -> DbClient:
+                return container.provide(DbClient)
+
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                from_thread = pool.submit(provide_in_thread).result()
+
+            assert from_thread is not mock_client
+            assert from_thread.dsn == "prod://db"
+
+    def test_use_mock_thread_local_singleton_does_not_leak_across_threads(self):
+        from concurrent.futures import ThreadPoolExecutor
+
+        class DbClient:
+            def __init__(self, dsn: str) -> None:
+                self.dsn = dsn
+
+        class Factory:
+            def get_db(self) -> DbClient:
+                return thread_local_singleton(DbClient, "prod://db")
+
+        container = Container(Factory())
+
+        def set_mock_and_provide() -> DbClient:
+            mock_client = DbClient("mock://db")
+            container.use_mock(DbClient, mock_client)
+            return container.provide(DbClient)
+
+        def provide_without_mock() -> DbClient:
+            return container.provide(DbClient)
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            mock_result = pool.submit(set_mock_and_provide).result()
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            clean_result = pool.submit(provide_without_mock).result()
+
+        assert mock_result.dsn == "mock://db"
+        assert clean_result.dsn == "prod://db"
+        assert mock_result is not clean_result
+
+    def test_override_preserves_use_mock_set_by_fixture(self):
+        """Simulate a pytest fixture that sets a mock via use_mock, then
+        a test that adds an override for a *different* service.  The
+        fixture mock must still be visible inside the override block."""
+
+        class BackendNotifier:
+            def notify(self) -> str:
+                return "real"
+
+        class PageRotator:
+            def rotate(self) -> str:
+                return "real"
+
+        class Workflow:
+            def __init__(
+                self, notifier: BackendNotifier, rotator: PageRotator
+            ) -> None:
+                self.notifier = notifier
+                self.rotator = rotator
+
+        class Factory:
+            def get_notifier(self) -> BackendNotifier:
+                return thread_local_singleton(BackendNotifier)
+
+            def get_rotator(self) -> PageRotator:
+                return thread_local_singleton(PageRotator)
+
+        container = Container(Factory())
+
+        # ---- fixture: set a mock for BackendNotifier via use_mock ----
+        mock_notifier = BackendNotifier()
+        mock_notifier.notify = lambda: "mocked"  # type: ignore[assignment]
+        container.use_mock(BackendNotifier, mock_notifier)
+
+        # ---- test body: override PageRotator only ----
+        mock_rotator = PageRotator()
+        mock_rotator.rotate = lambda: "mocked"  # type: ignore[assignment]
+
+        with container.override(PageRotator, mock_rotator):
+            workflow = container.provide(Workflow)
+
+        # The override for PageRotator should work
+        assert workflow.rotator is mock_rotator
+        # The fixture mock for BackendNotifier should still be active
+        assert workflow.notifier is mock_notifier
+
+        # ---- fixture teardown ----
+        container.clear_mocks()
+
+    def test_nested_overrides_carry_outer_mock_into_inner_block(self):
+        class ServiceA:
+            pass
+
+        class ServiceB:
+            pass
+
+        class ServiceC:
+            def __init__(self, a: ServiceA, b: ServiceB) -> None:
+                self.a = a
+                self.b = b
+
+        container = Container()
+        mock_a = ServiceA()
+        mock_b = ServiceB()
+
+        with container.override(ServiceA, mock_a):
+            with container.override(ServiceB, mock_b):
+                result = container.provide(ServiceC)
+
+            assert result.a is mock_a
+            assert result.b is mock_b
+
+    def test_nested_overrides_restore_correctly_after_inner_block(self):
+        class ServiceA:
+            pass
+
+        class ServiceB:
+            pass
+
+        class Composite:
+            def __init__(self, a: ServiceA, b: ServiceB) -> None:
+                self.a = a
+                self.b = b
+
+        container = Container()
+        mock_a = ServiceA()
+        mock_b = ServiceB()
+
+        with container.override(ServiceA, mock_a):
+            with container.override(ServiceB, mock_b):
+                pass
+
+            # After inner block, ServiceB override is gone but ServiceA stays
+            result = container.provide(Composite)
+
+            assert result.a is mock_a
+            assert result.b is not mock_b
+
+        # After outer block, both overrides are gone
+        result = container.provide(Composite)
+
+        assert result.a is not mock_a
+        assert result.b is not mock_b
+
+    def test_inner_override_can_shadow_outer_override_for_same_type(self):
+        class Service:
+            pass
+
+        container = Container()
+        outer_mock = Service()
+        inner_mock = Service()
+
+        with container.override(Service, outer_mock):
+            assert container.provide(Service) is outer_mock
+
+            with container.override(Service, inner_mock):
+                assert container.provide(Service) is inner_mock
+
+            assert container.provide(Service) is outer_mock
+
+        # After both blocks, the real inference kicks in
+        result = container.provide(Service)
+        assert result is not outer_mock
+        assert result is not inner_mock
