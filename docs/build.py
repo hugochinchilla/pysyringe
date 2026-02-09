@@ -14,6 +14,7 @@ from markdown.extensions.tables import TableExtension
 from markdown.extensions.toc import TocExtension
 
 DOCS_DIR = Path(__file__).parent
+PACKAGE_DIR = DOCS_DIR.parent / "pysyringe"
 
 NAV_SECTIONS = [
     ("Getting Started", ["introduction", "installation", "quick-start"]),
@@ -30,6 +31,19 @@ NAV_SECTIONS = [
     ),
     ("Reference", ["api-container", "api-singleton", "api-exceptions"]),
 ]
+
+
+def read_version():
+    """Read __version__ from pysyringe/__init__.py and return major.minor."""
+    text = (PACKAGE_DIR / "__init__.py").read_text()
+    match = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', text, re.MULTILINE)
+    if not match:
+        msg = "Could not find __version__ in pysyringe/__init__.py"
+        raise RuntimeError(msg)
+    full = match.group(1)
+    # Extract major.minor from versions like "1.4.0", "1.3.1.dev13+g..."
+    parts = re.match(r"(\d+\.\d+)", full)
+    return parts.group(1) if parts else full
 
 
 def extract_headings(md_source):
@@ -105,7 +119,10 @@ def build():
 
     sidebar_html = build_sidebar(heading_map)
 
-    output = template.replace("{{CONTENT}}", content_html)
+    version = read_version()
+
+    output = template.replace("{{VERSION}}", version)
+    output = output.replace("{{CONTENT}}", content_html)
     output = output.replace("{{SIDEBAR}}", sidebar_html)
 
     (DOCS_DIR / "index.html").write_text(output)
