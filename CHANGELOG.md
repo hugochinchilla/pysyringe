@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0]
+
+### Added
+
+- Factory methods can now receive the `Container` as an argument. If a factory
+  method declares a parameter typed as `Container`, the container passes itself
+  when invoking the factory during resolution. This allows factories to resolve
+  sub-dependencies through the container, benefiting from inference, mocks,
+  overrides, and aliases.
+
 ## [1.4.2]
 
 ### Fixed
@@ -77,7 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed code that was not being needed.
 
-[Unreleased]: https://github.com/hugochinchilla/pysyringe/compare/v1.4.2...HEAD
+[Unreleased]: https://github.com/hugochinchilla/pysyringe/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/hugochinchilla/pysyringe/compare/v1.4.2...v1.5.0
 [1.4.2]: https://github.com/hugochinchilla/pysyringe/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/hugochinchilla/pysyringe/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/hugochinchilla/pysyringe/compare/v1.3.0...v1.4.0
