@@ -182,8 +182,12 @@ class _Injector:
 
     def __get_injectable_arguments(self, function: Callable) -> dict[str, object]:
         signature = inspect.signature(function)
+        try:
+            hints = typing.get_type_hints(function)
+        except Exception:
+            hints = {}
         resolved_arguments = {
-            (p.name, self._resolver.resolve(p.annotation))
+            (p.name, self._resolver.resolve(hints.get(p.name, p.annotation)))
             for p in signature.parameters.values()
             if p.name != "self"
         }
@@ -225,10 +229,15 @@ class _TypeHelper:
         except ValueError:
             return []
 
+        try:
+            hints = typing.get_type_hints(subject.__init__)
+        except Exception:
+            hints = {}
+
         return [
             (
                 p.name,
-                _TypeHelper._desambiguate(p.annotation),
+                _TypeHelper._desambiguate(hints.get(p.name, p.annotation)),
                 _TypeHelper._default_or_unresolved(p.default, p.empty),
             )
             for p in parameters
@@ -284,4 +293,10 @@ class _TypeHelper:
 
     @staticmethod
     def get_return_type(method: Callable) -> type:
+        try:
+            hints = typing.get_type_hints(method)
+            if "return" in hints:
+                return cast(type, hints["return"])
+        except Exception:
+            pass
         return cast(type, inspect.signature(method).return_annotation)
