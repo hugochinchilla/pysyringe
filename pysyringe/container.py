@@ -127,13 +127,12 @@ class _Resolver:
             self._resolution_chain.append((cls, arg_name, arg_type))
             try:
                 resolved = self.resolve(arg_type, default)
-            except UnknownDependencyError:
-                raise
-            if isinstance(resolved, _Unresolved):
-                raise UnknownDependencyError(
-                    arg_type, resolution_chain=list(self._resolution_chain)
-                )
-            self._resolution_chain.pop()
+                if isinstance(resolved, _Unresolved):
+                    raise UnknownDependencyError(
+                        arg_type, resolution_chain=list(self._resolution_chain)
+                    )
+            finally:
+                self._resolution_chain.pop()
             kwargs[arg_name] = resolved
 
         return cls(*args, **kwargs)
@@ -148,12 +147,14 @@ class Container:
         self._resolver.never_provide.append(cls)
 
     def provide(self, cls: type[T]) -> T:
+        chain = self._resolver._resolution_chain
+        depth = len(chain)
         try:
             resolved = self._resolver.resolve(cls)
         except UnknownDependencyError:
             raise
         finally:
-            self._resolver._resolution_chain.clear()
+            del chain[depth:]
         if isinstance(resolved, _Unresolved):
             raise UnknownDependencyError(cls)
 
@@ -219,9 +220,11 @@ class _Injector:
         signature = inspect.signature(function)
         hints = typing.get_type_hints(function)
         resolved_arguments = set()
+        chain = self._resolver._resolution_chain
         for p in signature.parameters.values():
             if p.name == "self":
                 continue
+            depth = len(chain)
             try:
                 resolved_arguments.add(
                     (p.name, self._resolver.resolve(hints.get(p.name, p.annotation)))
@@ -229,7 +232,7 @@ class _Injector:
             except UnknownDependencyError:
                 pass
             finally:
-                self._resolver._resolution_chain.clear()
+                del chain[depth:]
         only_resolved = {
             (parameter_name, value)
             for (parameter_name, value) in resolved_arguments

@@ -685,6 +685,48 @@ class ThreadLocalSingletonWithMocksTest:
 
         assert service.dep is mock_impl
 
+    def test_resolution_chain_cleanup_does_not_crash_when_factory_calls_provide(self):
+        """Regression: IndexError: pop from empty list.
+
+        When a factory method calls container.provide() internally
+        and that inner provide() fails, its ``finally`` block calls
+        ``_resolution_chain.clear()``.  Control then returns to the
+        outer ``__make_from_inference`` which tries to ``pop()`` from
+        the now-empty chain.
+
+        The fix wraps the resolve + unresolved check in try/finally
+        so ``pop()`` always runs before the chain can be cleared by
+        an inner ``provide()`` call.
+        """
+
+        class Unresolvable:
+            def __init__(self, name: str) -> None:
+                self.name = name
+
+        class Dep:
+            pass
+
+        class Service:
+            def __init__(self, dep: Dep) -> None:
+                self.dep = dep
+
+        class Factory:
+            def create_dep(self, container: Container) -> Dep:
+                # This inner provide() will fail and its finally
+                # block will clear the shared _resolution_chain.
+                try:
+                    container.provide(Unresolvable)
+                except UnknownDependencyError:
+                    pass
+                return Dep()
+
+        container = Container(Factory())
+
+        # Without the fix, this raises IndexError: pop from empty list
+        service = container.provide(Service)
+        assert isinstance(service, Service)
+        assert isinstance(service.dep, Dep)
+
     def test_overrides_preserves_never_provide(self):
         class Forbidden:
             pass
