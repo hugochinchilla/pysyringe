@@ -1,4 +1,4 @@
-__version__ = "1.5.3.dev37+g74bcb4e00.d20260210"
+__version__ = "2.0.0"
 
 from pysyringe.container import Container, Provide
 
