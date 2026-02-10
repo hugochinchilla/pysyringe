@@ -1,11 +1,17 @@
-# PySyringe
+<p align="center">
+  <img src="assets/banner.svg" alt="PySyringe - Dependency Injection for Python" width="100%"/>
+</p>
 
-[![Tests](https://github.com/hugochinchilla/pysyringe/actions/workflows/test.yml/badge.svg)](https://github.com/hugochinchilla/pysyringe/actions/workflows/test.yml)
-[![Coverage](https://codecov.io/gh/hugochinchilla/pysyringe/graph/badge.svg?token=SN3JSCBB4U)](https://codecov.io/gh/hugochinchilla/pysyringe)
-[![PyPI version](https://badge.fury.io/py/pysyringe.svg)](https://badge.fury.io/py/pysyringe)
-[![Docs](https://img.shields.io/badge/docs-pysyringe-blue)](https://www.hugochinchilla.net/pysyringe/)
+<p align="center">
+  <a href="https://github.com/hugochinchilla/pysyringe/actions/workflows/test.yml"><img src="https://github.com/hugochinchilla/pysyringe/actions/workflows/test.yml/badge.svg" alt="Tests"/></a>
+  <a href="https://codecov.io/gh/hugochinchilla/pysyringe"><img src="https://codecov.io/gh/hugochinchilla/pysyringe/graph/badge.svg?token=SN3JSCBB4U" alt="Coverage"/></a>
+  <a href="https://badge.fury.io/py/pysyringe"><img src="https://badge.fury.io/py/pysyringe.svg" alt="PyPI version"/></a>
+  <a href="https://www.hugochinchilla.net/pysyringe/"><img src="https://img.shields.io/badge/docs-pysyringe-blue" alt="Docs"/></a>
+</p>
 
-An opinionated dependency injection library for Python.
+<p align="center">
+  <strong>An opinionated dependency injection library for Python.</strong>
+</p>
 
 A container that does not rely on adding decorators to your domain classes. It only wraps views in the infrastructure layer to keep your domain and app layer decoupled from the framework and the container.
 

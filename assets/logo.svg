@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="syringeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3776AB"/>
+      <stop offset="100%" style="stop-color:#FFD43B"/>
+    </linearGradient>
+    <linearGradient id="liquidGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD43B;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#F0C000;stop-opacity:0.9"/>
+    </linearGradient>
+    <linearGradient id="barrelGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#E8EDF2"/>
+      <stop offset="100%" style="stop-color:#C8D0DA"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="115%" height="115%">
+      <feDropShadow dx="2" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#3776AB" opacity="0.08"/>
+
+  <!-- Syringe group - rotated 45 degrees for dynamic feel -->
+  <g transform="translate(256,256) rotate(-45) translate(-256,-256)" filter="url(#shadow)">
+
+    <!-- Plunger handle (top) -->
+    <rect x="232" y="68" width="48" height="14" rx="4" fill="#5A6A7A"/>
+    <rect x="246" y="82" width="20" height="8" rx="2" fill="#8A96A4"/>
+
+    <!-- Plunger rod -->
+    <rect x="250" y="90" width="12" height="120" rx="3" fill="url(#barrelGrad)" stroke="#A0AAB4" stroke-width="1.5"/>
+
+    <!-- Barrel body -->
+    <rect x="228" y="200" width="56" height="180" rx="8" fill="url(#barrelGrad)" stroke="#A0AAB4" stroke-width="2"/>
+
+    <!-- Graduation marks on barrel -->
+    <line x1="234" y1="230" x2="250" y2="230" stroke="#8A96A4" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="234" y1="260" x2="256" y2="260" stroke="#8A96A4" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="234" y1="290" x2="250" y2="290" stroke="#8A96A4" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="234" y1="320" x2="256" y2="320" stroke="#8A96A4" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="234" y1="350" x2="250" y2="350" stroke="#8A96A4" stroke-width="1.5" stroke-linecap="round"/>
+
+    <!-- Liquid inside barrel -->
+    <rect x="233" y="280" width="46" height="95" rx="4" fill="url(#liquidGrad)"/>
+
+    <!-- Finger grips -->
+    <rect x="206" y="198" width="100" height="12" rx="6" fill="#5A6A7A"/>
+
+    <!-- Barrel tip (conical) -->
+    <polygon points="248,380 264,380 260,410 252,410" fill="url(#barrelGrad)" stroke="#A0AAB4" stroke-width="1.5"/>
+
+    <!-- Needle -->
+    <line x1="256" y1="410" x2="256" y2="460" stroke="url(#syringeGrad)" stroke-width="3.5" stroke-linecap="round"/>
+
+    <!-- Needle tip highlight -->
+    <circle cx="256" cy="460" r="2.5" fill="#FFD43B"/>
+
+    <!-- Droplet at needle tip -->
+    <path d="M256,466 Q252,474 256,480 Q260,474 256,466 Z" fill="#FFD43B" opacity="0.8"/>
+  </g>
+
+  <!-- Python-inspired decorative elements -->
+  <!-- Two intertwined dots (evoking Python's two snakes) -->
+  <circle cx="140" cy="370" r="12" fill="#3776AB" opacity="0.5"/>
+  <circle cx="155" cy="385" r="12" fill="#FFD43B" opacity="0.5"/>
+
+  <circle cx="372" cy="140" r="12" fill="#FFD43B" opacity="0.5"/>
+  <circle cx="357" cy="125" r="12" fill="#3776AB" opacity="0.5"/>
+</svg>
