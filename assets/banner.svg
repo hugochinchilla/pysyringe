@@ -128,7 +128,7 @@
   </g>
 
   <!-- Code snippet decoration (right side) -->
-  <g transform="translate(880, 60)" opacity="0.15">
+  <g transform="translate(880, 60)" opacity="0.25">
     <text font-family="'Courier New', monospace" font-size="14" fill="#FFD43B">
       <tspan x="0" dy="0">@container.inject</tspan>
       <tspan x="0" dy="20" fill="#6BA4D4">def</tspan>
