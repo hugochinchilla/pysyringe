@@ -1,8 +1,8 @@
 ## Introduction {#introduction}
 
-PySyringe is a dependency injection container that does **not** require decorators on your domain classes. Instead of polluting your business logic with framework-specific annotations, PySyringe wraps only the views in your infrastructure layer---keeping your domain and application layer decoupled from the framework and the container.
+PySyringe is a dependency injection container that does **not** require decorators on your domain classes. Instead of polluting your business logic with framework-specific annotations, PySyringe wraps only the call sites in your infrastructure layer---keeping your domain and application layer decoupled from the framework and the container.
 
-The philosophy is simple: your domain code should not know that a DI container exists. Injection happens at the call site (HTTP handlers, CLI commands, message consumers) using the `@container.inject` decorator or explicit `container.provide()` calls.
+The philosophy is simple: your domain code should not know that a DI container exists. Injection happens at the call site (HTTP handlers, CLI commands, message consumers) using the `@container.inject` decorator with `Provide[T]` type markers, or explicit `container.provide()` calls.
 
 ## Installation {#installation}
 
@@ -14,12 +14,12 @@ PySyringe requires **Python 3.11** or later and has no external dependencies.
 
 ## Quick Start {#quick-start}
 
-Here is a complete Flask application using PySyringe for dependency injection:
+Here is a Django view using PySyringe for dependency injection:
 
 ```python
 from datetime import datetime, timezone
-from flask import Flask
-from pysyringe.container import Container
+from django.http import HttpRequest, HttpResponse
+from pysyringe.container import Container, Provide
 
 
 # 1. Define an interface and its implementation
@@ -39,15 +39,12 @@ container.alias(CalendarInterface, Calendar)
 
 
 # 3. Inject dependencies at the call site
-app = Flask(__name__)
-
-@app.get("/now")
 @container.inject
-def get_now(calendar: CalendarInterface):
-    return {"now": calendar.now().isoformat()}
+def get_now(request: HttpRequest, calendar: Provide[CalendarInterface]) -> HttpResponse:
+    return HttpResponse(calendar.now().isoformat())
 ```
 
-That's it. The `CalendarInterface` and `Calendar` classes are plain Python---no decorators, no registration. The container resolves the dependency at the call site.
+The `CalendarInterface` and `Calendar` classes are plain Python---no decorators, no registration. The container injects only the parameter marked with `Provide[T]`; the `request` parameter is left for Django to provide.
 
 ## The Container {#container}
 
@@ -69,11 +66,10 @@ The optional `factory` argument is any object whose public methods serve as fact
 
 When you call `container.provide(SomeType)`, the container follows a strict resolution order:
 
-1. **Blacklist check** --- If the type was registered with `never_provide()`, resolution stops immediately.
-2. **Mock store** --- Check the current thread's mock store. If a mock was registered via `use_mock()` or `override()`, return it.
-3. **Alias lookup** --- If the type was registered with `alias()`, recursively resolve the mapped implementation type.
-4. **Factory methods** --- Look up a factory method by return-type annotation. If found, call it and return the result. If the factory method accepts a `Container` parameter, the container passes itself.
-5. **Constructor inference** --- Inspect the type's constructor, recursively resolve each parameter by its type hint, and construct the instance.
+1. **Mock store** --- Check the current thread's mock store. If a mock was registered via `use_mock()` or `override()`, return it.
+2. **Alias lookup** --- If the type was registered with `alias()`, recursively resolve the mapped implementation type.
+3. **Factory methods** --- Look up a factory method by return-type annotation. If found, call it and return the result. If the factory method accepts a `Container` parameter, the container passes itself.
+4. **Constructor inference** --- Inspect the type's constructor, recursively resolve each parameter by its type hint, and construct the instance.
 
 If none of these strategies succeed, an `UnknownDependencyError` is raised.
 
@@ -218,39 +214,28 @@ service = container.provide(NotificationService)
 
 The implementation is constructed via inference, so its dependencies are resolved recursively. You don't need a factory method for aliased types.
 
-## Blacklist {#blacklist}
+## The @inject Decorator and Provide[T] {#inject-decorator}
 
-Use `never_provide()` to tell the container it should never attempt to construct certain types. This is useful for framework-provided types that should not be auto-wired.
+The `@container.inject` decorator is the primary way to wire dependencies into your application's entry points (HTTP handlers, CLI commands, message consumers, etc.).
 
-```python
-from django.http import HttpRequest, HttpResponse
-
-container.never_provide(HttpRequest)
-container.never_provide(HttpResponse)
-```
-
-When a blacklisted type appears as a constructor parameter, the container skips it. If the parameter has a default value, the default is used. If it doesn't, inference for the enclosing type fails gracefully.
-
-## The @inject Decorator {#inject-decorator}
-
-The `@container.inject` decorator is the primary way to wire dependencies into your application's entry points (HTTP handlers, CLI commands, etc.).
+Use the `Provide[T]` type marker to indicate which parameters should be injected. Only marked parameters are injected; all others are left for the caller.
 
 ```python
-@app.get("/users")
+from pysyringe.container import Container, Provide
+
 @container.inject
-def list_users(user_service: UserService, page: int = 1):
-    return user_service.list(page=page)
+def list_users(request: HttpRequest, user_service: Provide[UserService]) -> HttpResponse:
+    return JsonResponse(user_service.list())
 ```
 
 How it works:
 
-1. The decorator inspects the function's signature.
-2. For each parameter, it attempts to resolve the type from the container.
-3. Parameters that **can** be resolved are pre-filled automatically.
-4. Parameters that **cannot** be resolved remain as normal function parameters.
-5. The function's `__signature__` is updated to reflect only the remaining parameters.
+1. The decorator inspects the function's signature and type hints.
+2. Parameters annotated with `Provide[T]` are resolved from the container.
+3. All other parameters are left untouched for the caller to provide.
+4. The function's `__signature__` is updated to reflect only the remaining (non-injected) parameters.
 
-In the example above, `user_service` is injected by the container while `page` remains a normal parameter.
+In the example above, `user_service` is injected by the container while `request` is provided by the framework as usual. This makes `@container.inject` safe to use with any framework---Django, Flask, Dramatiq, etc.---because the container never interferes with framework-controlled parameters.
 
 !!! note "Note"
     Dependencies are resolved at **call time**, not at decoration time. This means mocks set after the decorator is applied will still be picked up.
@@ -386,7 +371,6 @@ PySyringe is designed with thread safety in mind:
 | Feature | Scope | Details |
 |---------|-------|---------|
 | `alias()` | Global | Shared across all threads. Configure at startup. |
-| `never_provide()` | Global | Shared across all threads. Configure at startup. |
 | Factory methods | Global | Indexed at container initialization. Shared across threads. |
 | `use_mock()` | Per-thread | Stored in thread-local storage. No cross-thread leakage. |
 | `clear_mocks()` | Per-thread | Clears only the current thread's mocks. |
@@ -502,7 +486,7 @@ Resolve and return an instance of the requested type. Raises `UnknownDependencyE
 
 <code class="api-signature">inject(function: Callable) -> Callable</code>
 
-Decorator that injects resolvable dependencies into a function. Returns a wrapped function with resolved parameters pre-filled. Unresolvable parameters remain as normal parameters. The returned function's `__signature__` is updated to reflect only the remaining parameters.
+Decorator that injects dependencies into a function. Only parameters annotated with `Provide[T]` are resolved from the container; all other parameters are left for the caller. The returned function's `__signature__` is updated to hide injected parameters.
 
 <table class="param-table">
 <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
@@ -510,6 +494,19 @@ Decorator that injects resolvable dependencies into a function. Returns a wrappe
 <tr><td>function</td><td>Callable</td><td>The function to decorate.</td></tr>
 </tbody>
 </table>
+
+### Provide[T]
+
+<code class="api-signature">Provide[T]</code>
+
+Type marker for use in function signatures decorated with `@container.inject`. Annotate a parameter as `Provide[T]` to indicate that the container should inject it. At runtime, `Provide[T]` expands to `typing.Annotated[T, ...]`, so type checkers treat it as `T`.
+
+```python
+from pysyringe.container import Provide
+
+def my_view(request: HttpRequest, service: Provide[MyService]) -> HttpResponse:
+    ...
+```
 
 ### container.alias(interface, implementation)
 
@@ -522,19 +519,6 @@ Map an interface type to a concrete implementation. When the interface is reques
 <tbody>
 <tr><td>interface</td><td>type</td><td>The abstract type or interface.</td></tr>
 <tr><td>implementation</td><td>type</td><td>The concrete type to use.</td></tr>
-</tbody>
-</table>
-
-### container.never_provide(cls)
-
-<code class="api-signature">never_provide(cls: type[T]) -> None</code>
-
-Blacklist a type so the container will never attempt to resolve it. Useful for framework types like HTTP request/response objects.
-
-<table class="param-table">
-<thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
-<tbody>
-<tr><td>cls</td><td>type[T]</td><td>The type to blacklist.</td></tr>
 </tbody>
 </table>
 

@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0]
+
+### Changed
+
+- **Breaking:** `@container.inject` now requires explicit `Provide[T]` markers on
+  parameters that should be injected. Unmarked parameters are left for the caller.
+  This replaces the previous implicit behaviour where every resolvable parameter was
+  injected automatically, which conflicted with frameworks like Django and Dramatiq
+  that control their own function signatures.
+
+  ```python
+  from pysyringe.container import Container, Provide
+
+  @container.inject
+  def view(request, service: Provide[MyService]):
+      ...
+  ```
+
+### Removed
+
+- `Container.never_provide()` — no longer needed because `@container.inject` only
+  injects `Provide[T]`-marked parameters. Framework types like `HttpRequest` are
+  simply left unmarked.
+
 ## [1.5.2]
 
 ### Fixed
@@ -99,7 +123,8 @@ What the build asset for 1.5.0 should have been
 
 - Removed code that was not being needed.
 
-[Unreleased]: https://github.com/hugochinchilla/pysyringe/compare/v1.5.2...HEAD
+[Unreleased]: https://github.com/hugochinchilla/pysyringe/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/hugochinchilla/pysyringe/compare/v1.5.2...v2.0.0
 [1.5.2]: https://github.com/hugochinchilla/pysyringe/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/hugochinchilla/pysyringe/compare/v1.4.2...v1.5.1
 [1.4.2]: https://github.com/hugochinchilla/pysyringe/compare/v1.4.1...v1.4.2
