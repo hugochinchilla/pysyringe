@@ -100,7 +100,6 @@ exclude = [
     "docs",
 ]
 
-# Same as Black.
 line-length = 88
 
 # Allow unused variables when underscore-prefixed.
@@ -178,6 +177,3 @@ python_classes = "*Test"
 python_functions = "test_*"
 cache_dir = ".cache/pytest"
 filterwarnings = []
-
-[tool.isort]
-profile = "black"

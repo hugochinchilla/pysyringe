@@ -163,7 +163,8 @@ class ContainerTest:
     def test_raises_exception_for_union_types_union_constructor_syntax(self):
         class Service:
             def __init__(
-                self, dependency: Union[Database, object]  # noqa: UP007
+                self,
+                dependency: Union[Database, object],  # noqa: UP007
             ) -> None:
                 self.dependency = dependency
 
