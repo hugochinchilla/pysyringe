@@ -13,11 +13,13 @@
 <!-- Top navigation -->
 <header class="topnav">
   <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">&#9776;</button>
-  <a href="#" class="topnav-brand"><img src="../assets/logo.svg" alt="" width="28" height="28">PySyringe</a>
+  <a href="#" class="topnav-brand"><img src="https://raw.githubusercontent.com/hugochinchilla/pysyringe/master/assets/logo.svg" alt="" width="28" height="28">PySyringe</a>
   <div class="topnav-links">
     <a href="https://github.com/hugochinchilla/pysyringe">GitHub</a>
     <a href="https://pypi.org/project/pysyringe/">PyPI</a>
-    <span class="badge">v{{VERSION}}</span>
+    <select class="version-select" onchange="switchVersion(this.value)">
+{{VERSION_OPTIONS}}
+    </select>
     <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode"></button>
   </div>
 </header>
@@ -38,7 +40,7 @@
 <main class="main">
 
 <!-- Banner -->
-<img src="../assets/banner.svg" alt="PySyringe" class="hero-banner">
+<img src="https://raw.githubusercontent.com/hugochinchilla/pysyringe/master/assets/banner.svg" alt="PySyringe" class="hero-banner">
 
 <!-- Hero -->
 <div class="hero">
@@ -105,6 +107,10 @@
     update();
   };
 })();
+
+function switchVersion(path) {
+  if (path) window.location.href = path;
+}
 
 function toggleSidebar() {
   document.querySelector('.sidebar').classList.toggle('open');

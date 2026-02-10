@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
-from pysyringe.container import Container
+from pysyringe.container import Container, Provide
 
 
 class ServiceA:
@@ -68,7 +66,7 @@ class FutureAnnotationsTest:
         assert service.db.connection_string == "test://localhost"
 
     def test_inject_decorator(self):
-        def function(dep: ServiceA) -> ServiceA:
+        def function(dep: Provide[ServiceA]) -> ServiceA:
             return dep
 
         container = Container()
@@ -76,6 +74,19 @@ class FutureAnnotationsTest:
         result = injected()
 
         assert isinstance(result, ServiceA)
+
+    def test_inject_with_provide_marker_leaves_unmarked_params(self):
+        def handler(request: object, dep: Provide[ServiceA]):
+            return (request, dep)
+
+        container = Container()
+        injected = container.inject(handler)
+
+        sentinel = object()
+        req, dep = injected(sentinel)
+
+        assert req is sentinel
+        assert isinstance(dep, ServiceA)
 
     def test_optional_dependency(self):
         class ServiceWithOptional:

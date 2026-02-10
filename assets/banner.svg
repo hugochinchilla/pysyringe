@@ -132,7 +132,7 @@
     <text font-family="'Courier New', monospace" font-size="14" fill="#FFD43B">
       <tspan x="0" dy="0">@container.inject</tspan>
       <tspan x="0" dy="20" fill="#6BA4D4">def</tspan>
-      <tspan fill="#FFFFFF"> view(svc: Service):</tspan>
+      <tspan fill="#FFFFFF"> view(svc: Provide[Service]):</tspan>
       <tspan x="0" dy="20" fill="#6BA4D4" xml:space="preserve">    return</tspan>
       <tspan fill="#FFFFFF"> svc.run()</tspan>
     </text>

@@ -16,10 +16,11 @@ dev = [
     "coverage>=7.3",
     "pre-commit>=3.4.0",
     "ruff>=0.2.0",
-    "mypy>=1.6.1",
+    "ty>=0.0.1a7",
     "pytest>=8.3.5",
     "markdown>=3.5",
     "pygments>=2.17",
+    "django>=4.2",
 ]
 
 [project.urls]
@@ -99,7 +100,6 @@ exclude = [
     "docs",
 ]
 
-# Same as Black.
 line-length = 88
 
 # Allow unused variables when underscore-prefixed.
@@ -111,24 +111,27 @@ target-version = "py312"
 cache-dir = ".cache/ruff"
 
 [tool.ruff.lint.per-file-ignores]
-"./tests/*" = ["ANN201", "S101"]
+"./tests/*" = ["ANN201", "ANN202", "ARG001", "S101", "S106"]
 
 [tool.ruff.lint.mccabe]
 # Unlike Flake8, default to a complexity level of 10.
 max-complexity = 10
 
-[tool.mypy]
-python_version = "3.12"
-ignore_missing_imports = true
-no_implicit_optional = true
-strict_equality = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_configs = true
-warn_unused_ignores = true
-cache_dir = '.cache/mypy'
 
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.src]
+exclude = ["docs/"]
+
+[tool.ty.rules]
+# Promote warnings to errors so they block CI
+redundant-cast = "error"
+unused-ignore-comment = "error"
+unused-type-ignore-comment = "error"
+
+[tool.ty.terminal]
+error-on-warning = true
 
 [tool.coverage.run]
 branch = true
@@ -160,7 +163,13 @@ source = "vcs"
 # Accept tags like v1.2.3 and strip leading 'v'
 tag-pattern = "^v(?P<version>.*)$"
 version-file = "pysyringe/__init__.py"
-template = "__version__ = \"{version}\"\n"
+template = """\
+__version__ = \"{version}\"
+
+from pysyringe.container import Container, Provide
+
+__all__ = [\"Container\", \"Provide\"]
+"""
 write = true
 
 [tool.pytest.ini_options]
@@ -170,6 +179,3 @@ python_classes = "*Test"
 python_functions = "test_*"
 cache_dir = ".cache/pytest"
 filterwarnings = []
-
-[tool.isort]
-profile = "black"
