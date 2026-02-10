@@ -22,7 +22,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0d1117;
     --bg-code: #161b22;
     --bg-sidebar: #010409;
@@ -41,6 +41,26 @@
     --builtin: #ffa657;
     --shadow: 0 1px 3px rgba(0,0,0,0.3);
   }
+}
+
+[data-theme="dark"] {
+  --bg: #0d1117;
+  --bg-code: #161b22;
+  --bg-sidebar: #010409;
+  --bg-nav: #161b22;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --text-code: #e6edf3;
+  --border: #30363d;
+  --accent: #6BA4D4;
+  --accent-hover: #8AB8E0;
+  --accent-light: #1a2940;
+  --keyword: #ff7b72;
+  --string: #a5d6ff;
+  --comment: #8b949e;
+  --function: #d2a8ff;
+  --builtin: #ffa657;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
 * {
@@ -109,6 +129,23 @@ body {
 
 .topnav-links a:hover {
   color: var(--accent);
+}
+
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 16px;
+  line-height: 1;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.theme-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .topnav-links .badge {
@@ -406,9 +443,13 @@ pre code {
 }
 
 @media (prefers-color-scheme: dark) {
-  .callout.warning {
+  :root:not([data-theme="light"]) .callout.warning {
     background: #2a1500;
   }
+}
+
+[data-theme="dark"] .callout.warning {
+  background: #2a1500;
 }
 
 .callout strong {
