@@ -17,7 +17,9 @@
   <div class="topnav-links">
     <a href="https://github.com/hugochinchilla/pysyringe">GitHub</a>
     <a href="https://pypi.org/project/pysyringe/">PyPI</a>
-    <span class="badge">v{{VERSION}}</span>
+    <select class="version-select" onchange="switchVersion(this.value)">
+{{VERSION_OPTIONS}}
+    </select>
     <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode"></button>
   </div>
 </header>
@@ -105,6 +107,10 @@
     update();
   };
 })();
+
+function switchVersion(path) {
+  if (path) window.location.href = path;
+}
 
 function toggleSidebar() {
   document.querySelector('.sidebar').classList.toggle('open');

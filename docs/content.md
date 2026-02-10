@@ -19,7 +19,7 @@ Here is a Django view using PySyringe for dependency injection:
 ```python
 from datetime import datetime, timezone
 from django.http import HttpRequest, HttpResponse
-from pysyringe.container import Container, Provide
+from pysyringe import Container, Provide
 
 
 # 1. Define an interface and its implementation
@@ -51,7 +51,7 @@ The `CalendarInterface` and `Calendar` classes are plain Python---no decorators,
 The `Container` class is the central piece of PySyringe. It manages dependency resolution, mocking, and injection.
 
 ```python
-from pysyringe.container import Container
+from pysyringe import Container
 
 # Without a factory (inference-only)
 container = Container()
@@ -81,7 +81,7 @@ If none of these strategies succeed, an `UnknownDependencyError` is raised.
 Factories give you full control over how dependencies are constructed. A factory is any object---the container discovers its public methods and indexes them by their return-type annotation.
 
 ```python
-from pysyringe.container import Container
+from pysyringe import Container
 from pysyringe.singleton import singleton
 
 
@@ -127,7 +127,7 @@ Key rules for factory methods:
 Factory methods can receive the `Container` itself as an argument. If a factory method declares a parameter typed as `Container`, the container passes itself when invoking the factory. This lets factories resolve sub-dependencies through the container, benefiting from inference, mocks, overrides, and aliases.
 
 ```python
-from pysyringe.container import Container
+from pysyringe import Container
 
 
 class AppConfig:
@@ -221,7 +221,7 @@ The `@container.inject` decorator is the primary way to wire dependencies into y
 Use the `Provide[T]` type marker to indicate which parameters should be injected. Only marked parameters are injected; all others are left for the caller.
 
 ```python
-from pysyringe.container import Container, Provide
+from pysyringe import Container, Provide
 
 @container.inject
 def list_users(request: HttpRequest, user_service: Provide[UserService]) -> HttpResponse:
@@ -502,7 +502,7 @@ Decorator that injects dependencies into a function. Only parameters annotated w
 Type marker for use in function signatures decorated with `@container.inject`. Annotate a parameter as `Provide[T]` to indicate that the container should inject it. At runtime, `Provide[T]` expands to `typing.Annotated[T, ...]`, so type checkers treat it as `T`.
 
 ```python
-from pysyringe.container import Provide
+from pysyringe import Provide
 
 def my_view(request: HttpRequest, service: Provide[MyService]) -> HttpResponse:
     ...

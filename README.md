@@ -52,7 +52,7 @@ class Factory:
 Factory methods can also receive the container to resolve sub-dependencies. Just add a `container: Container` parameter:
 
 ```python
-from pysyringe.container import Container
+from pysyringe import Container
 
 
 class Factory:
@@ -69,7 +69,7 @@ The container passes itself automatically when it detects a `Container`-typed pa
 
 ```python
 from os import getenv
-from pysyringe.container import Container
+from pysyringe import Container
 
 factory = Factory(getenv("ENVIRONMENT", "development"))
 container = Container(factory)
@@ -95,7 +95,7 @@ A complete Django example:
 ```python
 # views.py
 from django.http import HttpRequest, HttpResponse
-from pysyringe.container import Container, Provide
+from pysyringe import Container, Provide
 from myapp.domain import CalendarInterface
 from myapp.infra import Calendar
 
@@ -113,7 +113,7 @@ def get_now(request: HttpRequest, calendar: Provide[CalendarInterface]) -> HttpR
 
 ```python
 import pytest
-from pysyringe.container import Container
+from pysyringe import Container
 from myapp.domain import UserRepository
 from myapp.usecases import SignupUserService
 from myapp.infra.testing import InMemoryUserRepository
@@ -135,7 +135,7 @@ Mocks are thread-local. Configure them per-test and clear afterwards.
 
 ```python
 import pytest
-from pysyringe.container import Container
+from pysyringe import Container
 from myapp.domain import UserRepository
 from myapp.usecases import SignupUserService
 from myapp.infra.testing import InMemoryUserRepository
@@ -183,7 +183,7 @@ PySyringe provides two singleton helpers for use inside your factory methods. Bo
 
 ```python
 from pysyringe.singleton import singleton
-from pysyringe.container import Container
+from pysyringe import Container
 
 
 class DatabaseClient:

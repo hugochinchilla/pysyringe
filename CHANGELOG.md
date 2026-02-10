@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that control their own function signatures.
 
   ```python
-  from pysyringe.container import Container, Provide
+  from pysyringe import Container, Provide
 
   @container.inject
   def view(request, service: Provide[MyService]):

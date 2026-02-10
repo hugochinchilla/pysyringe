@@ -16,6 +16,14 @@ from markdown.extensions.toc import TocExtension
 DOCS_DIR = Path(__file__).parent
 PACKAGE_DIR = DOCS_DIR.parent / "pysyringe"
 
+# Ordered newest-first.  The first entry is treated as "current" and built
+# into docs/index.html.  Older entries are static snapshots that already
+# live under docs/<path>/.
+DOC_VERSIONS = [
+    {"label": "2.0 (latest)", "path": ".", "current": True},
+    {"label": "1.5", "path": "1.5"},
+]
+
 NAV_SECTIONS = [
     ("Getting Started", ["introduction", "installation", "quick-start"]),
     (
@@ -44,6 +52,16 @@ def read_version():
     # Extract major.minor from versions like "1.4.0", "1.3.1.dev13+g..."
     parts = re.match(r"(\d+\.\d+)", full)
     return parts.group(1) if parts else full
+
+
+def build_version_options():
+    """Generate <option> elements for the version switcher."""
+    options = []
+    for v in DOC_VERSIONS:
+        href = "index.html" if v.get("current") else f"{v['path']}/index.html"
+        selected = " selected" if v.get("current") else ""
+        options.append(f'      <option value="{href}"{selected}>v{v["label"]}</option>')
+    return "\n".join(options)
 
 
 def extract_headings(md_source):
@@ -120,8 +138,10 @@ def build():
     sidebar_html = build_sidebar(heading_map)
 
     version = read_version()
+    version_options = build_version_options()
 
     output = template.replace("{{VERSION}}", version)
+    output = output.replace("{{VERSION_OPTIONS}}", version_options)
     output = output.replace("{{CONTENT}}", content_html)
     output = output.replace("{{SIDEBAR}}", sidebar_html)
 

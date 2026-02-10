@@ -13,15 +13,11 @@
 <!-- Top navigation -->
 <header class="topnav">
   <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">&#9776;</button>
-  <a href="#" class="topnav-brand"><img src="../assets/logo.svg" alt="" width="28" height="28">PySyringe</a>
+  <a href="#" class="topnav-brand">PySyringe</a>
   <div class="topnav-links">
     <a href="https://github.com/hugochinchilla/pysyringe">GitHub</a>
     <a href="https://pypi.org/project/pysyringe/">PyPI</a>
-    <select class="version-select" onchange="switchVersion(this.value)">
-      <option value="index.html" selected>v2.0 (latest)</option>
-      <option value="1.5/index.html">v1.5</option>
-    </select>
-    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode"></button>
+    <span class="badge">v1.5</span>
   </div>
 </header>
 
@@ -47,10 +43,11 @@
       <a href="#container-aware-factories">Container-Aware Factories</a>
       <a href="#inference">Constructor Inference</a>
       <a href="#aliases">Aliases</a>
+      <a href="#blacklist">Blacklist</a>
     </div>
     <div class="nav-section">
       <div class="nav-section-title">Dependency Injection</div>
-      <a href="#inject-decorator">The @inject Decorator and Provide[T]</a>
+      <a href="#inject-decorator">The @inject Decorator</a>
       <a href="#provide">Providing Dependencies</a>
     </div>
     <div class="nav-section">
@@ -83,9 +80,6 @@
 <!-- Main content -->
 <main class="main">
 
-<!-- Banner -->
-<img src="../assets/banner.svg" alt="PySyringe" class="hero-banner">
-
 <!-- Hero -->
 <div class="hero">
   <h1>PySyringe</h1>
@@ -93,21 +87,47 @@
   <div class="install-cmd">
     <span class="prompt">$</span> pip install pysyringe
   </div>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h3>Zero-Decorator DI</h3>
+      <p>Your domain classes stay free of framework annotations. Injection happens only at the infrastructure boundary.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Inference-Based Wiring</h3>
+      <p>Auto-wire constructor dependencies from type hints. No registration boilerplate needed.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Thread-Safe by Design</h3>
+      <p>Thread-local mocks, double-checked locking singletons, and per-thread instance caching built in.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Test-Friendly</h3>
+      <p>Replace any dependency with a mock using context managers. Mocks never leak between threads.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Factory Support</h3>
+      <p>Wire complex dependencies using factory methods. The container matches methods by return-type annotation.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Zero Dependencies</h3>
+      <p>Pure Python. No external packages required. Works with Python 3.11+.</p>
+    </div>
+  </div>
 </div>
 
 <h2 id="introduction" class="section-anchor">Introduction</h2>
-<p>PySyringe is a dependency injection container that does <strong>not</strong> require decorators on your domain classes. Instead of polluting your business logic with framework-specific annotations, PySyringe wraps only the call sites in your infrastructure layer&mdash;keeping your domain and application layer decoupled from the framework and the container.</p>
-<p>The philosophy is simple: your domain code should not know that a DI container exists. Injection happens at the call site (HTTP handlers, CLI commands, message consumers) using the <code>@container.inject</code> decorator with <code>Provide[T]</code> type markers, or explicit <code>container.provide()</code> calls.</p>
+<p>PySyringe is a dependency injection container that does <strong>not</strong> require decorators on your domain classes. Instead of polluting your business logic with framework-specific annotations, PySyringe wraps only the views in your infrastructure layer&mdash;keeping your domain and application layer decoupled from the framework and the container.</p>
+<p>The philosophy is simple: your domain code should not know that a DI container exists. Injection happens at the call site (HTTP handlers, CLI commands, message consumers) using the <code>@container.inject</code> decorator or explicit <code>container.provide()</code> calls.</p>
 <h2 id="installation" class="section-anchor">Installation</h2>
 <div class="highlight"><pre><span></span><code>pip install pysyringe
 </code></pre></div>
 
 <p>PySyringe requires <strong>Python 3.11</strong> or later and has no external dependencies.</p>
 <h2 id="quick-start" class="section-anchor">Quick Start</h2>
-<p>Here is a Django view using PySyringe for dependency injection:</p>
+<p>Here is a complete Flask application using PySyringe for dependency injection:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">django.http</span><span class="w"> </span><span class="kn">import</span> <span class="n">HttpRequest</span><span class="p">,</span> <span class="n">HttpResponse</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Provide</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flask</span><span class="w"> </span><span class="kn">import</span> <span class="n">Flask</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe.container</span><span class="w"> </span><span class="kn">import</span> <span class="n">Container</span>
 
 
 <span class="c1"># 1. Define an interface and its implementation</span>
@@ -127,15 +147,18 @@
 
 
 <span class="c1"># 3. Inject dependencies at the call site</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/now&quot;</span><span class="p">)</span>
 <span class="nd">@container</span><span class="o">.</span><span class="n">inject</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">get_now</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">HttpRequest</span><span class="p">,</span> <span class="n">calendar</span><span class="p">:</span> <span class="n">Provide</span><span class="p">[</span><span class="n">CalendarInterface</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">HttpResponse</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">HttpResponse</span><span class="p">(</span><span class="n">calendar</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">())</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_now</span><span class="p">(</span><span class="n">calendar</span><span class="p">:</span> <span class="n">CalendarInterface</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;now&quot;</span><span class="p">:</span> <span class="n">calendar</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()}</span>
 </code></pre></div>
 
-<p>The <code>CalendarInterface</code> and <code>Calendar</code> classes are plain Python&mdash;no decorators, no registration. The container injects only the parameter marked with <code>Provide[T]</code>; the <code>request</code> parameter is left for Django to provide.</p>
+<p>That&rsquo;s it. The <code>CalendarInterface</code> and <code>Calendar</code> classes are plain Python&mdash;no decorators, no registration. The container resolves the dependency at the call site.</p>
 <h2 id="container" class="section-anchor">The Container</h2>
 <p>The <code>Container</code> class is the central piece of PySyringe. It manages dependency resolution, mocking, and injection.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">Container</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe.container</span><span class="w"> </span><span class="kn">import</span> <span class="n">Container</span>
 
 <span class="c1"># Without a factory (inference-only)</span>
 <span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
@@ -148,6 +171,7 @@
 <h2 id="resolution" class="section-anchor">How Resolution Works</h2>
 <p>When you call <code>container.provide(SomeType)</code>, the container follows a strict resolution order:</p>
 <ol>
+<li><strong>Blacklist check</strong> &mdash; If the type was registered with <code>never_provide()</code>, resolution stops immediately.</li>
 <li><strong>Mock store</strong> &mdash; Check the current thread&rsquo;s mock store. If a mock was registered via <code>use_mock()</code> or <code>override()</code>, return it.</li>
 <li><strong>Alias lookup</strong> &mdash; If the type was registered with <code>alias()</code>, recursively resolve the mapped implementation type.</li>
 <li><strong>Factory methods</strong> &mdash; Look up a factory method by return-type annotation. If found, call it and return the result. If the factory method accepts a <code>Container</code> parameter, the container passes itself.</li>
@@ -160,7 +184,7 @@
 </div>
 <h2 id="factories" class="section-anchor">Factory Methods</h2>
 <p>Factories give you full control over how dependencies are constructed. A factory is any object&mdash;the container discovers its public methods and indexes them by their return-type annotation.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">Container</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe.container</span><span class="w"> </span><span class="kn">import</span> <span class="n">Container</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe.singleton</span><span class="w"> </span><span class="kn">import</span> <span class="n">singleton</span>
 
 
@@ -203,7 +227,7 @@
 </ul>
 <h3 id="container-aware-factories" class="section-anchor">Container-Aware Factories</h3>
 <p>Factory methods can receive the <code>Container</code> itself as an argument. If a factory method declares a parameter typed as <code>Container</code>, the container passes itself when invoking the factory. This lets factories resolve sub-dependencies through the container, benefiting from inference, mocks, overrides, and aliases.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">Container</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe.container</span><span class="w"> </span><span class="kn">import</span> <span class="n">Container</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">AppConfig</span><span class="p">:</span>
@@ -281,24 +305,32 @@
 </code></pre></div>
 
 <p>The implementation is constructed via inference, so its dependencies are resolved recursively. You don&rsquo;t need a factory method for aliased types.</p>
-<h2 id="inject-decorator" class="section-anchor">The @inject Decorator and Provide[T]</h2>
-<p>The <code>@container.inject</code> decorator is the primary way to wire dependencies into your application&rsquo;s entry points (HTTP handlers, CLI commands, message consumers, etc.).</p>
-<p>Use the <code>Provide[T]</code> type marker to indicate which parameters should be injected. Only marked parameters are injected; all others are left for the caller.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Provide</span>
+<h2 id="blacklist" class="section-anchor">Blacklist</h2>
+<p>Use <code>never_provide()</code> to tell the container it should never attempt to construct certain types. This is useful for framework-provided types that should not be auto-wired.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">django.http</span><span class="w"> </span><span class="kn">import</span> <span class="n">HttpRequest</span><span class="p">,</span> <span class="n">HttpResponse</span>
 
+<span class="n">container</span><span class="o">.</span><span class="n">never_provide</span><span class="p">(</span><span class="n">HttpRequest</span><span class="p">)</span>
+<span class="n">container</span><span class="o">.</span><span class="n">never_provide</span><span class="p">(</span><span class="n">HttpResponse</span><span class="p">)</span>
+</code></pre></div>
+
+<p>When a blacklisted type appears as a constructor parameter, the container skips it. If the parameter has a default value, the default is used. If it doesn&rsquo;t, inference for the enclosing type fails gracefully.</p>
+<h2 id="inject-decorator" class="section-anchor">The @inject Decorator</h2>
+<p>The <code>@container.inject</code> decorator is the primary way to wire dependencies into your application&rsquo;s entry points (HTTP handlers, CLI commands, etc.).</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/users&quot;</span><span class="p">)</span>
 <span class="nd">@container</span><span class="o">.</span><span class="n">inject</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">HttpRequest</span><span class="p">,</span> <span class="n">user_service</span><span class="p">:</span> <span class="n">Provide</span><span class="p">[</span><span class="n">UserService</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">HttpResponse</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">JsonResponse</span><span class="p">(</span><span class="n">user_service</span><span class="o">.</span><span class="n">list</span><span class="p">())</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_users</span><span class="p">(</span><span class="n">user_service</span><span class="p">:</span> <span class="n">UserService</span><span class="p">,</span> <span class="n">page</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">user_service</span><span class="o">.</span><span class="n">list</span><span class="p">(</span><span class="n">page</span><span class="o">=</span><span class="n">page</span><span class="p">)</span>
 </code></pre></div>
 
 <p>How it works:</p>
 <ol>
-<li>The decorator inspects the function&rsquo;s signature and type hints.</li>
-<li>Parameters annotated with <code>Provide[T]</code> are resolved from the container.</li>
-<li>All other parameters are left untouched for the caller to provide.</li>
-<li>The function&rsquo;s <code>__signature__</code> is updated to reflect only the remaining (non-injected) parameters.</li>
+<li>The decorator inspects the function&rsquo;s signature.</li>
+<li>For each parameter, it attempts to resolve the type from the container.</li>
+<li>Parameters that <strong>can</strong> be resolved are pre-filled automatically.</li>
+<li>Parameters that <strong>cannot</strong> be resolved remain as normal function parameters.</li>
+<li>The function&rsquo;s <code>__signature__</code> is updated to reflect only the remaining parameters.</li>
 </ol>
-<p>In the example above, <code>user_service</code> is injected by the container while <code>request</code> is provided by the framework as usual. This makes <code>@container.inject</code> safe to use with any framework&mdash;Django, Flask, Dramatiq, etc.&mdash;because the container never interferes with framework-controlled parameters.</p>
+<p>In the example above, <code>user_service</code> is injected by the container while <code>page</code> remains a normal parameter.</p>
 <div class="callout note">
 <strong>Note</strong>
 <p>Dependencies are resolved at <strong>call time</strong>, not at decoration time. This means mocks set after the decorator is applied will still be picked up.</p>
@@ -438,6 +470,11 @@
 <td>Shared across all threads. Configure at startup.</td>
 </tr>
 <tr>
+<td><code>never_provide()</code></td>
+<td>Global</td>
+<td>Shared across all threads. Configure at startup.</td>
+</tr>
+<tr>
 <td>Factory methods</td>
 <td>Global</td>
 <td>Indexed at container initialization. Shared across threads.</td>
@@ -545,22 +582,13 @@
 
 <h3 id="containerinjectfunction" class="section-anchor">container.inject(function)</h3>
 <p><code class="api-signature">inject(function: Callable) -&gt; Callable</code></p>
-<p>Decorator that injects dependencies into a function. Only parameters annotated with <code>Provide[T]</code> are resolved from the container; all other parameters are left for the caller. The returned function&rsquo;s <code>__signature__</code> is updated to hide injected parameters.</p>
+<p>Decorator that injects resolvable dependencies into a function. Returns a wrapped function with resolved parameters pre-filled. Unresolvable parameters remain as normal parameters. The returned function&rsquo;s <code>__signature__</code> is updated to reflect only the remaining parameters.</p>
 <table class="param-table">
 <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td>function</td><td>Callable</td><td>The function to decorate.</td></tr>
 </tbody>
 </table>
-
-<h3 id="providet" class="section-anchor">Provide[T]</h3>
-<p><code class="api-signature">Provide[T]</code></p>
-<p>Type marker for use in function signatures decorated with <code>@container.inject</code>. Annotate a parameter as <code>Provide[T]</code> to indicate that the container should inject it. At runtime, <code>Provide[T]</code> expands to <code>typing.Annotated[T, ...]</code>, so type checkers treat it as <code>T</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">Provide</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">my_view</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">HttpRequest</span><span class="p">,</span> <span class="n">service</span><span class="p">:</span> <span class="n">Provide</span><span class="p">[</span><span class="n">MyService</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">HttpResponse</span><span class="p">:</span>
-    <span class="o">...</span>
-</code></pre></div>
 
 <h3 id="containeraliasinterface-implementation" class="section-anchor">container.alias(interface, implementation)</h3>
 <p><code class="api-signature">alias(interface: type, implementation: type) -&gt; None</code></p>
@@ -570,6 +598,16 @@
 <tbody>
 <tr><td>interface</td><td>type</td><td>The abstract type or interface.</td></tr>
 <tr><td>implementation</td><td>type</td><td>The concrete type to use.</td></tr>
+</tbody>
+</table>
+
+<h3 id="containernever_providecls" class="section-anchor">container.never_provide(cls)</h3>
+<p><code class="api-signature">never_provide(cls: type[T]) -&gt; None</code></p>
+<p>Blacklist a type so the container will never attempt to resolve it. Useful for framework types like HTTP request/response objects.</p>
+<table class="param-table">
+<thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>cls</td><td>type[T]</td><td>The type to blacklist.</td></tr>
 </tbody>
 </table>
 
@@ -652,35 +690,6 @@
 </div>
 
 <script>
-(function() {
-  var saved = localStorage.getItem('theme');
-  if (saved) document.documentElement.setAttribute('data-theme', saved);
-  function update() {
-    var isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
-      (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.querySelector('.theme-toggle').textContent = isDark ? '\u2600\uFE0F' : '\uD83C\uDF19';
-  }
-  document.addEventListener('DOMContentLoaded', update);
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', update);
-  window.toggleTheme = function() {
-    var current = document.documentElement.getAttribute('data-theme');
-    var isDark;
-    if (current) {
-      isDark = current === 'dark';
-    } else {
-      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    var next = isDark ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-    update();
-  };
-})();
-
-function switchVersion(path) {
-  if (path) window.location.href = path;
-}
-
 function toggleSidebar() {
   document.querySelector('.sidebar').classList.toggle('open');
   document.querySelector('.overlay').classList.toggle('open');
