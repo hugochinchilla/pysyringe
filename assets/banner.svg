@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2940"/>
+      <stop offset="50%" style="stop-color:#1e3550"/>
+      <stop offset="100%" style="stop-color:#1a2940"/>
+    </linearGradient>
+    <linearGradient id="syringeGradB" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3776AB"/>
+      <stop offset="100%" style="stop-color:#FFD43B"/>
+    </linearGradient>
+    <linearGradient id="liquidGradB" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD43B;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#F0C000;stop-opacity:0.9"/>
+    </linearGradient>
+    <linearGradient id="barrelGradB" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#E8EDF2"/>
+      <stop offset="100%" style="stop-color:#C8D0DA"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FFFFFF"/>
+      <stop offset="100%" style="stop-color:#E0E8F0"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3776AB"/>
+      <stop offset="100%" style="stop-color:#FFD43B"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadowB" x="-5%" y="-5%" width="115%" height="115%">
+      <feDropShadow dx="1" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="300" fill="url(#bgGrad)" rx="12"/>
+
+  <!-- Subtle grid pattern for tech feel -->
+  <g opacity="0.04" stroke="#FFD43B" stroke-width="0.5">
+    <line x1="0" y1="60" x2="1200" y2="60"/>
+    <line x1="0" y1="120" x2="1200" y2="120"/>
+    <line x1="0" y1="180" x2="1200" y2="180"/>
+    <line x1="0" y1="240" x2="1200" y2="240"/>
+    <line x1="200" y1="0" x2="200" y2="300"/>
+    <line x1="400" y1="0" x2="400" y2="300"/>
+    <line x1="600" y1="0" x2="600" y2="300"/>
+    <line x1="800" y1="0" x2="800" y2="300"/>
+    <line x1="1000" y1="0" x2="1000" y2="300"/>
+  </g>
+
+  <!-- Decorative dots -->
+  <circle cx="50" cy="50" r="4" fill="#3776AB" opacity="0.3"/>
+  <circle cx="65" cy="65" r="4" fill="#FFD43B" opacity="0.3"/>
+  <circle cx="1135" cy="235" r="4" fill="#FFD43B" opacity="0.3"/>
+  <circle cx="1150" cy="250" r="4" fill="#3776AB" opacity="0.3"/>
+
+  <!-- Syringe icon -->
+  <g transform="translate(150,150) rotate(-45) scale(0.55) translate(-256,-256)" filter="url(#shadowB)">
+    <!-- Plunger handle -->
+    <rect x="232" y="68" width="48" height="14" rx="4" fill="#8A96A4"/>
+    <rect x="246" y="82" width="20" height="8" rx="2" fill="#A0AAB8"/>
+
+    <!-- Plunger rod -->
+    <rect x="250" y="90" width="12" height="120" rx="3" fill="url(#barrelGradB)" stroke="#A0AAB4" stroke-width="1.5"/>
+
+    <!-- Barrel body -->
+    <rect x="228" y="200" width="56" height="180" rx="8" fill="url(#barrelGradB)" stroke="#A0AAB4" stroke-width="2"/>
+
+    <!-- Graduation marks -->
+    <line x1="234" y1="230" x2="250" y2="230" stroke="#8A96A4" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="234" y1="260" x2="256" y2="260" stroke="#8A96A4" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="234" y1="290" x2="250" y2="290" stroke="#8A96A4" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="234" y1="320" x2="256" y2="320" stroke="#8A96A4" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="234" y1="350" x2="250" y2="350" stroke="#8A96A4" stroke-width="1.5" stroke-linecap="round"/>
+
+    <!-- Liquid -->
+    <rect x="233" y="280" width="46" height="95" rx="4" fill="url(#liquidGradB)"/>
+
+    <!-- Finger grips -->
+    <rect x="206" y="198" width="100" height="12" rx="6" fill="#8A96A4"/>
+
+    <!-- Barrel tip -->
+    <polygon points="248,380 264,380 260,410 252,410" fill="url(#barrelGradB)" stroke="#A0AAB4" stroke-width="1.5"/>
+
+    <!-- Needle -->
+    <line x1="256" y1="410" x2="256" y2="460" stroke="url(#syringeGradB)" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="256" cy="460" r="2.5" fill="#FFD43B"/>
+
+    <!-- Droplet -->
+    <path d="M256,466 Q252,474 256,480 Q260,474 256,466 Z" fill="#FFD43B" opacity="0.8"/>
+  </g>
+
+  <!-- Title text -->
+  <text x="310" y="130" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="72" font-weight="700" fill="url(#textGrad)" letter-spacing="-1">
+    <tspan fill="#FFFFFF">Py</tspan><tspan fill="#FFD43B">Syringe</tspan>
+  </text>
+
+  <!-- Accent line under title -->
+  <rect x="312" y="145" width="280" height="3" rx="1.5" fill="url(#accentGrad)" opacity="0.8"/>
+
+  <!-- Tagline -->
+  <text x="315" y="182" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#8A9BB8" font-weight="400" letter-spacing="0.5">
+    Dependency Injection for Python
+  </text>
+
+  <!-- Feature pills -->
+  <g font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="500">
+    <!-- Pill 1 -->
+    <rect x="315" y="210" width="130" height="28" rx="14" fill="#3776AB" opacity="0.2" stroke="#3776AB" stroke-width="1" stroke-opacity="0.4"/>
+    <text x="380" y="229" fill="#6BA4D4" text-anchor="middle">Zero Decorators</text>
+
+    <!-- Pill 2 -->
+    <rect x="458" y="210" width="140" height="28" rx="14" fill="#3776AB" opacity="0.2" stroke="#3776AB" stroke-width="1" stroke-opacity="0.4"/>
+    <text x="528" y="229" fill="#6BA4D4" text-anchor="middle">Factory Wiring</text>
+
+    <!-- Pill 3 -->
+    <rect x="611" y="210" width="120" height="28" rx="14" fill="#3776AB" opacity="0.2" stroke="#3776AB" stroke-width="1" stroke-opacity="0.4"/>
+    <text x="671" y="229" fill="#6BA4D4" text-anchor="middle">Thread Safe</text>
+
+    <!-- Pill 4 -->
+    <rect x="744" y="210" width="140" height="28" rx="14" fill="#3776AB" opacity="0.2" stroke="#3776AB" stroke-width="1" stroke-opacity="0.4"/>
+    <text x="814" y="229" fill="#6BA4D4" text-anchor="middle">Test Friendly</text>
+  </g>
+
+  <!-- Code snippet decoration (right side) -->
+  <g transform="translate(880, 60)" opacity="0.15">
+    <text font-family="'Courier New', monospace" font-size="14" fill="#FFD43B">
+      <tspan x="0" dy="0">@container.inject</tspan>
+      <tspan x="0" dy="20" fill="#6BA4D4">def</tspan>
+      <tspan fill="#FFFFFF"> view(svc: Service):</tspan>
+      <tspan x="0" dy="20" fill="#FFFFFF">    </tspan>
+      <tspan fill="#6BA4D4">return</tspan>
+      <tspan fill="#FFFFFF"> svc.run()</tspan>
+    </text>
+  </g>
+
+  <!-- Bottom accent line -->
+  <rect x="0" y="294" width="1200" height="6" rx="0" fill="url(#accentGrad)" opacity="0.6"/>
+</svg>
