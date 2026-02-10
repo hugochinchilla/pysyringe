@@ -101,7 +101,7 @@
   </text>
 
   <!-- Accent line under title -->
-  <rect x="312" y="145" width="280" height="3" rx="1.5" fill="url(#accentGrad)" opacity="0.8"/>
+  <rect x="312" y="149" width="342" height="3" rx="1.5" fill="url(#accentGrad)" opacity="0.8"/>
 
   <!-- Tagline -->
   <text x="315" y="182" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#8A9BB8" font-weight="400" letter-spacing="0.5">
