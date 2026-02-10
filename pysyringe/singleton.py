@@ -1,8 +1,8 @@
 import threading
-from typing import ClassVar, TypeVar
+from collections.abc import Callable, Hashable
+from typing import ClassVar, TypeVar, cast
 
 T = TypeVar("T")
-CacheKey = tuple[T, ...]
 
 
 class _Cache:
@@ -10,11 +10,11 @@ class _Cache:
     _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @classmethod
-    def get_or_create(cls, key: CacheKey[T], factory: object) -> T:
+    def get_or_create(cls, key: Hashable, factory: Callable[[], T]) -> T:
         with cls._lock:
             if key not in cls._entries:
                 cls._entries[key] = factory()
-            return cls._entries[key]
+            return cast(T, cls._entries[key])
 
 
 def singleton(type_: type[T], *type_args, **type_kwargs) -> T:
@@ -26,7 +26,7 @@ class _ThreadLocalCache:
     _local: ClassVar[threading.local] = threading.local()
 
     @classmethod
-    def get_or_create(cls, key: CacheKey[T], factory: object) -> T:
+    def get_or_create(cls, key: Hashable, factory: Callable[[], T]) -> T:
         entries = getattr(cls._local, "entries", None)
         if entries is None:
             entries = {}
@@ -35,7 +35,7 @@ class _ThreadLocalCache:
         if key not in entries:
             entries[key] = factory()
 
-        return entries[key]
+        return cast(T, entries[key])
 
 
 def thread_local_singleton(type_: type[T], *type_args, **type_kwargs) -> T:

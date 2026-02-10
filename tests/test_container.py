@@ -477,7 +477,7 @@ class ThreadLocalSingletonWithMocksTest:
             # The override mock is thread-local, so another thread
             # should NOT see it — it gets the real factory result.
             def provide_in_thread() -> DbClient:
-                return container.provide(DbClient)
+                return container.provide(DbClient)  # type: ignore[no-any-return]
 
             with ThreadPoolExecutor(max_workers=1) as pool:
                 from_thread = pool.submit(provide_in_thread).result()
@@ -501,10 +501,10 @@ class ThreadLocalSingletonWithMocksTest:
         def set_mock_and_provide() -> DbClient:
             mock_client = DbClient("mock://db")
             container.use_mock(DbClient, mock_client)
-            return container.provide(DbClient)
+            return container.provide(DbClient)  # type: ignore[no-any-return]
 
         def provide_without_mock() -> DbClient:
-            return container.provide(DbClient)
+            return container.provide(DbClient)  # type: ignore[no-any-return]
 
         with ThreadPoolExecutor(max_workers=1) as pool:
             mock_result = pool.submit(set_mock_and_provide).result()

@@ -26,7 +26,7 @@ _provide_marker = _ProvideMarker()
 
 
 if TYPE_CHECKING:
-    type Provide[T] = typing.Annotated[T, _provide_marker]
+    Provide: typing.TypeAlias = typing.Annotated[T, _provide_marker]  # noqa: UP040
 else:
 
     class Provide:
@@ -50,7 +50,9 @@ else:
 
 class UnknownDependencyError(Exception):
     def __init__(
-        self, type_: type, resolution_chain: list[tuple[type, str]] | None = None
+        self,
+        type_: type,
+        resolution_chain: list[tuple[type, str, type]] | None = None,
     ) -> None:
         message = f"Container does not know how to provide {type_}"
         if resolution_chain:
@@ -315,7 +317,7 @@ class _TypeHelper:
         except ValueError:
             return []
 
-        hints = typing.get_type_hints(subject.__init__)
+        hints = typing.get_type_hints(subject.__init__)  # type: ignore[misc]
 
         return [
             (

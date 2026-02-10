@@ -121,6 +121,7 @@ max-complexity = 10
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true
+exclude = ["docs/"]
 no_implicit_optional = true
 strict_equality = true
 warn_redundant_casts = true
