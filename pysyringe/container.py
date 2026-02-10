@@ -265,7 +265,7 @@ class _Injector:
             if not _is_provide_marker(hint):
                 continue
 
-            resolved_or_unresolved: type | _Unresolved = _TypeHelper.desambiguate(
+            resolved_or_unresolved: type | _Unresolved = _TypeHelper.disambiguate(
                 _unwrap_provide(hint)
             )
             if isinstance(resolved_or_unresolved, _Unresolved):
@@ -322,7 +322,7 @@ class _TypeHelper:
         return [
             (
                 p.name,
-                _TypeHelper._desambiguate(hints.get(p.name, p.annotation)),
+                _TypeHelper._disambiguate(hints.get(p.name, p.annotation)),
                 _TypeHelper._default_or_unresolved(p.default, p.empty),
             )
             for p in parameters
@@ -340,11 +340,11 @@ class _TypeHelper:
         return True
 
     @classmethod
-    def desambiguate(cls, type_: type[T]) -> type[T] | _Unresolved:
-        return cls._desambiguate(type_)
+    def disambiguate(cls, type_: type[T]) -> type[T] | _Unresolved:
+        return cls._disambiguate(type_)
 
     @classmethod
-    def _desambiguate(cls, type_: type[T]) -> type[T] | _Unresolved:
+    def _disambiguate(cls, type_: type[T]) -> type[T] | _Unresolved:
         if cls._is_union(type_):
             if cls._is_optional(type_):
                 return cls._resolve_optional(type_)
