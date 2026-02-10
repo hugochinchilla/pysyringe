@@ -231,6 +231,7 @@ class _Injector:
     def inject(self, function: Callable) -> Callable:
         injections = self.__get_injectable_arguments(function)
 
+        @functools.wraps(function)
         def partial_function(*args, **kwargs) -> Any:
             injections = self.__get_injectable_arguments(function)
             return function(*args, **kwargs, **injections)
@@ -239,7 +240,6 @@ class _Injector:
             function,
             injections,
         )
-        partial_function.__name__ = function.__name__
 
         return partial_function
 

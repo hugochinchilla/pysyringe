@@ -836,6 +836,51 @@ class ProvideMarkerTest:
         result = injected(object())
         assert isinstance(result, Service)
 
+    def test_preserves_function_metadata(self):
+        class Service:
+            pass
+
+        def handler(request: object, service: Provide[Service]) -> object:
+            """View docstring."""
+            return service
+
+        handler.custom_attr = "kept"  # type: ignore[attr-defined]
+
+        container = Container()
+        injected = container.inject(handler)
+
+        assert injected.__name__ == "handler"
+        assert injected.__qualname__ == handler.__qualname__
+        assert injected.__module__ == handler.__module__
+        assert injected.__doc__ == "View docstring."
+        assert injected.__wrapped__ is handler  # type: ignore[attr-defined]
+        assert injected.custom_attr == "kept"  # type: ignore[attr-defined]
+
+    def test_signature_hides_injected_and_keeps_rest(self):
+        class ServiceA:
+            pass
+
+        class ServiceB:
+            pass
+
+        def handler(
+            request: object,
+            a: Provide[ServiceA],
+            b: Provide[ServiceB],
+            page: int = 1,
+        ) -> object:
+            pass
+
+        container = Container()
+        injected = container.inject(handler)
+
+        sig = inspect.signature(injected)
+        param_names = list(sig.parameters.keys())
+
+        assert param_names == ["request", "page"]
+        assert sig.parameters["page"].default == 1
+        assert sig.return_annotation is object
+
     def test_no_provide_markers_injects_nothing(self):
         class Dependency:
             pass
