@@ -118,6 +118,21 @@ cache-dir = ".cache/ruff"
 max-complexity = 10
 
 
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.src]
+exclude = ["docs/"]
+
+[tool.ty.rules]
+# Promote warnings to errors so they block CI
+redundant-cast = "error"
+unused-ignore-comment = "error"
+unused-type-ignore-comment = "error"
+
+[tool.ty.terminal]
+error-on-warning = true
+
 [tool.coverage.run]
 branch = true
 relative_files = true
