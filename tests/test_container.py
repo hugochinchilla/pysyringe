@@ -1,6 +1,6 @@
 import contextlib
 import inspect
-from typing import Union
+from typing import Any, Union
 
 import pytest
 
@@ -478,7 +478,7 @@ class ThreadLocalSingletonWithMocksTest:
             # The override mock is thread-local, so another thread
             # should NOT see it — it gets the real factory result.
             def provide_in_thread() -> DbClient:
-                return container.provide(DbClient)  # type: ignore[no-any-return]
+                return container.provide(DbClient)
 
             with ThreadPoolExecutor(max_workers=1) as pool:
                 from_thread = pool.submit(provide_in_thread).result()
@@ -502,10 +502,10 @@ class ThreadLocalSingletonWithMocksTest:
         def set_mock_and_provide() -> DbClient:
             mock_client = DbClient("mock://db")
             container.use_mock(DbClient, mock_client)
-            return container.provide(DbClient)  # type: ignore[no-any-return]
+            return container.provide(DbClient)
 
         def provide_without_mock() -> DbClient:
-            return container.provide(DbClient)  # type: ignore[no-any-return]
+            return container.provide(DbClient)
 
         with ThreadPoolExecutor(max_workers=1) as pool:
             mock_result = pool.submit(set_mock_and_provide).result()
@@ -546,12 +546,10 @@ class ThreadLocalSingletonWithMocksTest:
 
         # ---- fixture: set a mock for BackendNotifier via use_mock ----
         mock_notifier = BackendNotifier()
-        mock_notifier.notify = lambda: "mocked"
         container.use_mock(BackendNotifier, mock_notifier)
 
         # ---- test body: override PageRotator only ----
         mock_rotator = PageRotator()
-        mock_rotator.rotate = lambda: "mocked"
 
         with container.override(PageRotator, mock_rotator):
             workflow = container.provide(Workflow)
@@ -842,10 +840,12 @@ class ProvideMarkerTest:
             """View docstring."""
             return service
 
-        handler.custom_attr = "kept"
+        handler.custom_attr = "kept"  # type: ignore[attr-defined]
+
+        from typing import cast
 
         container = Container()
-        injected = container.inject(handler)
+        injected = cast(Any, container.inject(handler))
 
         assert injected.__name__ == "handler"
         assert injected.__qualname__ == handler.__qualname__

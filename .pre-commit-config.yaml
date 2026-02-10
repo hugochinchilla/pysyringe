@@ -35,10 +35,10 @@ repos:
         entry: "uv lock --check"
         pass_filenames: false
 
-      - id: mypy
-        name: Checking types with mypy
+      - id: ty
+        name: Checking types with ty
         language: system
-        entry: "uv run mypy ."
+        entry: "uv run ty check"
         pass_filenames: false
 
       - id: test

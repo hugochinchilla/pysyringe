@@ -16,7 +16,7 @@ dev = [
     "coverage>=7.3",
     "pre-commit>=3.4.0",
     "ruff>=0.2.0",
-    "mypy>=1.6.1",
+    "ty>=0.0.1a7",
     "pytest>=8.3.5",
     "markdown>=3.5",
     "pygments>=2.17",
@@ -116,19 +116,6 @@ cache-dir = ".cache/ruff"
 [tool.ruff.lint.mccabe]
 # Unlike Flake8, default to a complexity level of 10.
 max-complexity = 10
-
-[tool.mypy]
-python_version = "3.12"
-ignore_missing_imports = true
-exclude = ["docs/"]
-no_implicit_optional = true
-strict_equality = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_configs = true
-warn_unused_ignores = true
-cache_dir = '.cache/mypy'
 
 
 [tool.coverage.run]

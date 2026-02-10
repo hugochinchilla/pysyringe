@@ -44,7 +44,7 @@ else:
                 ...
         """
 
-        def __class_getitem__(cls, item: type) -> type:
+        def __class_getitem__(cls, item: type) -> typing.Any:
             return typing.Annotated[item, _provide_marker]
 
 
@@ -245,7 +245,7 @@ class _Injector:
             injections = self.__get_injectable_arguments(function)
             return function(*args, **kwargs, **injections)
 
-        partial_function.__signature__ = self.__create_new_signature(  # type: ignore[attr-defined]
+        cast(Any, partial_function).__signature__ = self.__create_new_signature(
             function,
             injections,
         )
@@ -317,7 +317,7 @@ class _TypeHelper:
         except ValueError:
             return []
 
-        hints = typing.get_type_hints(subject.__init__)  # type: ignore[misc]
+        hints = typing.get_type_hints(subject.__init__)
 
         return [
             (
