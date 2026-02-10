@@ -41,6 +41,14 @@ repos:
         entry: "uv run ty check"
         pass_filenames: false
 
+      - id: check-tag-version
+        name: Checking tag matches __version__
+        language: script
+        entry: scripts/check-tag-version.sh
+        always_run: true
+        pass_filenames: false
+        stages: [pre-push]
+
       - id: test
         name: Running test suite
         language: system
