@@ -198,7 +198,8 @@ Inference rules:
 Aliases map an interface (or abstract class) to a concrete implementation. When the container is asked to provide the interface type, it resolves the mapped implementation instead.
 
 ```python
-class NotificationService:
+class NotificationService(abc.ABC):
+    @abc.abstractmethod
     def send(self, message: str) -> None:
         raise NotImplementedError
 
