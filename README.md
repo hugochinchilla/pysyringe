@@ -17,7 +17,7 @@ Your business logic should not know a DI container exists. No decorators on your
 
 ## Features
 
-- 🚀 **Zero-decorator DI**: keep your domain clean; inject only at call sites.
+- 🚀 **Uninstrusive**: keep your domain clean; doesn't require markers, sentinels, or framework-specific constructs in your function signatures.
 - 🏭 **Factory-based wiring**: resolve by return type annotations on your factory.
 - 🧩 **Inference-based construction**: auto-wire constructor dependencies by type hints.
 - 🧪 **Test-friendly mocks**: replace any dependency per test with `override(...)`.

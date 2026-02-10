@@ -13,11 +13,12 @@
 <!-- Top navigation -->
 <header class="topnav">
   <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">&#9776;</button>
-  <a href="#" class="topnav-brand">PySyringe</a>
+  <a href="#" class="topnav-brand"><img src="../assets/logo.svg" alt="" width="28" height="28">PySyringe</a>
   <div class="topnav-links">
     <a href="https://github.com/hugochinchilla/pysyringe">GitHub</a>
     <a href="https://pypi.org/project/pysyringe/">PyPI</a>
     <span class="badge">v1.5</span>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode"></button>
   </div>
 </header>
 
@@ -80,38 +81,15 @@
 <!-- Main content -->
 <main class="main">
 
+<!-- Banner -->
+<img src="../assets/banner.svg" alt="PySyringe" class="hero-banner">
+
 <!-- Hero -->
 <div class="hero">
   <h1>PySyringe</h1>
   <p class="tagline">An opinionated dependency injection library for Python.<br>Keep your domain clean. Inject only at call sites.</p>
   <div class="install-cmd">
     <span class="prompt">$</span> pip install pysyringe
-  </div>
-  <div class="feature-grid">
-    <div class="feature-card">
-      <h3>Zero-Decorator DI</h3>
-      <p>Your domain classes stay free of framework annotations. Injection happens only at the infrastructure boundary.</p>
-    </div>
-    <div class="feature-card">
-      <h3>Inference-Based Wiring</h3>
-      <p>Auto-wire constructor dependencies from type hints. No registration boilerplate needed.</p>
-    </div>
-    <div class="feature-card">
-      <h3>Thread-Safe by Design</h3>
-      <p>Thread-local mocks, double-checked locking singletons, and per-thread instance caching built in.</p>
-    </div>
-    <div class="feature-card">
-      <h3>Test-Friendly</h3>
-      <p>Replace any dependency with a mock using context managers. Mocks never leak between threads.</p>
-    </div>
-    <div class="feature-card">
-      <h3>Factory Support</h3>
-      <p>Wire complex dependencies using factory methods. The container matches methods by return-type annotation.</p>
-    </div>
-    <div class="feature-card">
-      <h3>Zero Dependencies</h3>
-      <p>Pure Python. No external packages required. Works with Python 3.11+.</p>
-    </div>
   </div>
 </div>
 
@@ -690,6 +668,31 @@
 </div>
 
 <script>
+(function() {
+  var saved = localStorage.getItem('theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+  function update() {
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+      (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.querySelector('.theme-toggle').textContent = isDark ? '\u2600\uFE0F' : '\uD83C\uDF19';
+  }
+  document.addEventListener('DOMContentLoaded', update);
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', update);
+  window.toggleTheme = function() {
+    var current = document.documentElement.getAttribute('data-theme');
+    var isDark;
+    if (current) {
+      isDark = current === 'dark';
+    } else {
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    var next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    update();
+  };
+})();
+
 function toggleSidebar() {
   document.querySelector('.sidebar').classList.toggle('open');
   document.querySelector('.overlay').classList.toggle('open');

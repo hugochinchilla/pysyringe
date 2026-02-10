@@ -38,7 +38,7 @@
   </defs>
 
   <!-- Background -->
-  <rect width="1200" height="300" fill="url(#bgGrad)" rx="12"/>
+  <path d="M12,0 H1188 Q1200,0 1200,12 V300 H0 V12 Q0,0 12,0 Z" fill="url(#bgGrad)"/>
 
   <!-- Subtle grid pattern for tech feel -->
   <g opacity="0.04" stroke="#FFD43B" stroke-width="0.5">
@@ -101,7 +101,7 @@
   </text>
 
   <!-- Accent line under title -->
-  <rect x="312" y="145" width="280" height="3" rx="1.5" fill="url(#accentGrad)" opacity="0.8"/>
+  <rect x="312" y="149" width="342" height="3" rx="1.5" fill="url(#accentGrad)" opacity="0.8"/>
 
   <!-- Tagline -->
   <text x="315" y="182" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#8A9BB8" font-weight="400" letter-spacing="0.5">
@@ -112,7 +112,7 @@
   <g font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="500">
     <!-- Pill 1 -->
     <rect x="315" y="210" width="130" height="28" rx="14" fill="#3776AB" opacity="0.2" stroke="#3776AB" stroke-width="1" stroke-opacity="0.4"/>
-    <text x="380" y="229" fill="#6BA4D4" text-anchor="middle">Zero Decorators</text>
+    <text x="380" y="229" fill="#6BA4D4" text-anchor="middle">Uninstrusive</text>
 
     <!-- Pill 2 -->
     <rect x="458" y="210" width="140" height="28" rx="14" fill="#3776AB" opacity="0.2" stroke="#3776AB" stroke-width="1" stroke-opacity="0.4"/>
@@ -128,13 +128,12 @@
   </g>
 
   <!-- Code snippet decoration (right side) -->
-  <g transform="translate(880, 60)" opacity="0.15">
+  <g transform="translate(880, 60)" opacity="0.25">
     <text font-family="'Courier New', monospace" font-size="14" fill="#FFD43B">
       <tspan x="0" dy="0">@container.inject</tspan>
       <tspan x="0" dy="20" fill="#6BA4D4">def</tspan>
       <tspan fill="#FFFFFF"> view(svc: Service):</tspan>
-      <tspan x="0" dy="20" fill="#FFFFFF">    </tspan>
-      <tspan fill="#6BA4D4">return</tspan>
+      <tspan x="0" dy="20" fill="#6BA4D4" xml:space="preserve">    return</tspan>
       <tspan fill="#FFFFFF"> svc.run()</tspan>
     </text>
   </g>
