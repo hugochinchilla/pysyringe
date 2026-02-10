@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0]
 
+### Added
+
+- `py.typed` PEP 561 marker for type-checker support.
+- `Container` and `Provide` are now re-exported from the top-level package, so you
+  can write `from pysyringe import Container, Provide`.
+
 ### Changed
 
 - **Breaking:** `@container.inject` now requires explicit `Provide[T]` markers on
@@ -22,6 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   def view(request, service: Provide[MyService]):
       ...
   ```
+
+### Fixed
+
+- `@container.inject` now preserves the decorated function's metadata (`__name__`,
+  `__qualname__`, `__doc__`, `__module__`, `__wrapped__`, and custom attributes)
+  via `functools.wraps`.
 
 ### Removed
 
