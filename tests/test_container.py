@@ -1,3 +1,4 @@
+import contextlib
 import inspect
 from typing import Union
 
@@ -529,9 +530,7 @@ class ThreadLocalSingletonWithMocksTest:
                 return "real"
 
         class Workflow:
-            def __init__(
-                self, notifier: BackendNotifier, rotator: PageRotator
-            ) -> None:
+            def __init__(self, notifier: BackendNotifier, rotator: PageRotator) -> None:
                 self.notifier = notifier
                 self.rotator = rotator
 
@@ -546,12 +545,12 @@ class ThreadLocalSingletonWithMocksTest:
 
         # ---- fixture: set a mock for BackendNotifier via use_mock ----
         mock_notifier = BackendNotifier()
-        mock_notifier.notify = lambda: "mocked"  # type: ignore[assignment]
+        mock_notifier.notify = lambda: "mocked"
         container.use_mock(BackendNotifier, mock_notifier)
 
         # ---- test body: override PageRotator only ----
         mock_rotator = PageRotator()
-        mock_rotator.rotate = lambda: "mocked"  # type: ignore[assignment]
+        mock_rotator.rotate = lambda: "mocked"
 
         with container.override(PageRotator, mock_rotator):
             workflow = container.provide(Workflow)
@@ -689,10 +688,8 @@ class ThreadLocalSingletonWithMocksTest:
             def create_dep(self, container: Container) -> Dep:
                 # This inner provide() will fail and its finally
                 # block will clear the shared _resolution_chain.
-                try:
+                with contextlib.suppress(UnknownDependencyError):
                     container.provide(Unresolvable)
-                except UnknownDependencyError:
-                    pass
                 return Dep()
 
         container = Container(Factory())
@@ -844,7 +841,7 @@ class ProvideMarkerTest:
             """View docstring."""
             return service
 
-        handler.custom_attr = "kept"  # type: ignore[attr-defined]
+        handler.custom_attr = "kept"
 
         container = Container()
         injected = container.inject(handler)
@@ -853,8 +850,8 @@ class ProvideMarkerTest:
         assert injected.__qualname__ == handler.__qualname__
         assert injected.__module__ == handler.__module__
         assert injected.__doc__ == "View docstring."
-        assert injected.__wrapped__ is handler  # type: ignore[attr-defined]
-        assert injected.custom_attr == "kept"  # type: ignore[attr-defined]
+        assert injected.__wrapped__ is handler
+        assert injected.custom_attr == "kept"
 
     def test_signature_hides_injected_and_keeps_rest(self):
         class ServiceA:

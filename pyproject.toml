@@ -112,7 +112,7 @@ target-version = "py312"
 cache-dir = ".cache/ruff"
 
 [tool.ruff.lint.per-file-ignores]
-"./tests/*" = ["ANN201", "S101"]
+"./tests/*" = ["ANN201", "ANN202", "ARG001", "S101", "S106"]
 
 [tool.ruff.lint.mccabe]
 # Unlike Flake8, default to a complexity level of 10.
@@ -161,7 +161,13 @@ source = "vcs"
 # Accept tags like v1.2.3 and strip leading 'v'
 tag-pattern = "^v(?P<version>.*)$"
 version-file = "pysyringe/__init__.py"
-template = "__version__ = \"{version}\"\n"
+template = """\
+__version__ = \"{version}\"
+
+from pysyringe.container import Container, Provide
+
+__all__ = [\"Container\", \"Provide\"]
+"""
 write = true
 
 [tool.pytest.ini_options]

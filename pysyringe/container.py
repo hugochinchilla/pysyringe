@@ -5,7 +5,7 @@ import typing
 from collections.abc import Callable, Hashable
 from contextlib import contextmanager
 from types import UnionType
-from typing import Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 T = TypeVar("T")
 NoneType = type(None)
@@ -25,23 +25,27 @@ class _ProvideMarker:
 _provide_marker = _ProvideMarker()
 
 
-class Provide:
-    """Type marker for explicit dependency injection.
+if TYPE_CHECKING:
+    type Provide[T] = typing.Annotated[T, _provide_marker]
+else:
 
-    Use ``Provide[SomeType]`` in a function decorated with
-    ``@container.inject`` to indicate which parameters should be
-    injected by the container.  Only marked parameters are injected;
-    all others are left for the caller.
+    class Provide:
+        """Type marker for explicit dependency injection.
 
-    Example::
+        Use ``Provide[SomeType]`` in a function decorated with
+        ``@container.inject`` to indicate which parameters should be
+        injected by the container.  Only marked parameters are injected;
+        all others are left for the caller.
 
-        @container.inject
-        def view(request, service: Provide[MyService]):
-            ...
-    """
+        Example::
 
-    def __class_getitem__(cls, item: type) -> type:
-        return typing.Annotated[item, _provide_marker]
+            @container.inject
+            def view(request, service: Provide[MyService]):
+                ...
+        """
+
+        def __class_getitem__(cls, item: type) -> type:
+            return typing.Annotated[item, _provide_marker]
 
 
 class UnknownDependencyError(Exception):
@@ -51,9 +55,11 @@ class UnknownDependencyError(Exception):
         message = f"Container does not know how to provide {type_}"
         if resolution_chain:
             chain_lines = "\n".join(
-                f"  -> {cls.__name__} requires {param_type} (parameter '{param_name}')"
-                if not isinstance(param_type, type)
-                else f"  -> {cls.__name__} requires {param_type.__name__} (parameter '{param_name}')"
+                (
+                    f"  -> {cls.__name__} requires {param_type} (parameter '{param_name}')"
+                    if not isinstance(param_type, type)
+                    else f"  -> {cls.__name__} requires {param_type.__name__} (parameter '{param_name}')"
+                )
                 for cls, param_name, param_type in resolution_chain
             )
             message += f"\n\nResolution chain:\n{chain_lines}"
@@ -104,6 +110,9 @@ class _Resolver:
             if self.factory is not None
             else {}
         )
+
+    def get_resolution_chain(self) -> list[tuple[type, str, type]]:
+        return self._resolution_chain
 
     def resolve(
         self, cls: type[T], default: T | _Unresolved = _unresolved
@@ -163,12 +172,10 @@ class Container:
         self._resolver.container = self
 
     def provide(self, cls: type[T]) -> T:
-        chain = self._resolver._resolution_chain
+        chain = self._resolver.get_resolution_chain()
         depth = len(chain)
         try:
             resolved = self._resolver.resolve(cls)
-        except UnknownDependencyError:
-            raise
         finally:
             del chain[depth:]
         if isinstance(resolved, _Unresolved):
@@ -221,7 +228,7 @@ def _is_provide_marker(hint: object) -> bool:
 
 def _unwrap_provide(hint: type) -> type:
     """Extract the inner type *T* from ``Provide[T]``."""
-    return typing.get_args(hint)[0]
+    return cast(type, typing.get_args(hint)[0])
 
 
 class _Injector:
@@ -247,7 +254,7 @@ class _Injector:
         signature = inspect.signature(function)
         hints = typing.get_type_hints(function, include_extras=True)
         resolved_arguments = set()
-        chain = self._resolver._resolution_chain
+        chain = self._resolver.get_resolution_chain()
         for p in signature.parameters.values():
             if p.name == "self":
                 continue
@@ -256,11 +263,15 @@ class _Injector:
             if not _is_provide_marker(hint):
                 continue
 
-            resolve_type = _TypeHelper._desambiguate(_unwrap_provide(hint))
+            resolved_or_unresolved: type | _Unresolved = _TypeHelper.desambiguate(
+                _unwrap_provide(hint)
+            )
+            if isinstance(resolved_or_unresolved, _Unresolved):
+                continue
             depth = len(chain)
             try:
                 resolved_arguments.add(
-                    (p.name, self._resolver.resolve(resolve_type))
+                    (p.name, self._resolver.resolve(resolved_or_unresolved))
                 )
             except UnknownDependencyError:
                 pass
@@ -327,6 +338,10 @@ class _TypeHelper:
         return True
 
     @classmethod
+    def desambiguate(cls, type_: type[T]) -> type[T] | _Unresolved:
+        return cls._desambiguate(type_)
+
+    @classmethod
     def _desambiguate(cls, type_: type[T]) -> type[T] | _Unresolved:
         if cls._is_union(type_):
             if cls._is_optional(type_):
@@ -366,7 +381,9 @@ class _TypeHelper:
     @staticmethod
     def accepts_container(method: Callable) -> bool:
         hints = typing.get_type_hints(method)
-        return any(hint is Container for name, hint in hints.items() if name != "return")
+        return any(
+            hint is Container for name, hint in hints.items() if name != "return"
+        )
 
     @staticmethod
     def get_return_type(method: Callable) -> type:
