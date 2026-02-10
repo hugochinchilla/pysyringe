@@ -386,6 +386,10 @@ pre code {
 .highlight .n, .highlight .na, .highlight .nv,
 .highlight .no, .highlight .nl { color: var(--text-code); }
 
+.highlight + p {
+    margin-top: 16px;
+}
+
 /* API reference table */
 .api-signature {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
