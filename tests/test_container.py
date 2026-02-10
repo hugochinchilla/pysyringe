@@ -1,9 +1,11 @@
+import inspect
 from typing import Union
 
 import pytest
 
 from pysyringe.container import (
     Container,
+    Provide,
     UnknownDependencyError,
     UnresolvableUnionTypeError,
 )
@@ -173,7 +175,7 @@ class ContainerTest:
         class Dependency:
             pass
 
-        def function(dep: Dependency) -> Dependency:
+        def function(dep: Provide[Dependency]) -> Dependency:
             return dep
 
         container = Container(EmptyFactory())
@@ -181,20 +183,6 @@ class ContainerTest:
         result = injected_function()
 
         assert isinstance(result, Dependency)
-
-    def test_provide_blacklisted_dependency_results_in_error(self):
-        class ForbiddenDependency:
-            pass
-
-        class Service:
-            def __init__(self, dependency: ForbiddenDependency) -> None:
-                self.dependency = dependency
-
-        container = Container(EmptyFactory())
-        container.never_provide(ForbiddenDependency)
-
-        with pytest.raises(UnknownDependencyError):
-            container.provide(Service)
 
     def test_container_without_factory_supports_inference_and_alias(self):
         class A:
@@ -237,19 +225,6 @@ class ContainerTest:
         assert client1 is client2
         assert isinstance(client1, DatabaseClient)
         assert client1.connection_string == "postgresql://localhost:5432/mydb"
-
-    def test_resolve_with_non_class_type_handles_typeerror(self):
-        """Test that resolve() handles TypeError when issubclass() fails with non-class types."""
-        # Create a resolver with a never_provide list that will cause issubclass to fail
-        container = Container(factory=None)
-        container.never_provide(
-            "not_a_class"
-        )  # This will cause TypeError in issubclass
-
-        # This should not raise an exception, but return _Unresolved
-        # because issubclass() will raise TypeError for non-class types
-        with pytest.raises(UnknownDependencyError):
-            container.provide("not_a_class")
 
     def test_thread_local_mocks_do_not_leak_between_threads(self):
         from concurrent.futures import ThreadPoolExecutor
@@ -343,7 +318,7 @@ class ContainerTest:
         class Dependency:
             pass
 
-        def function(dep: Dependency):
+        def function(dep: Provide[Dependency]):
             return dep
 
         container = Container(EmptyFactory())
@@ -727,18 +702,151 @@ class ThreadLocalSingletonWithMocksTest:
         assert isinstance(service, Service)
         assert isinstance(service.dep, Dep)
 
-    def test_overrides_preserves_never_provide(self):
-        class Forbidden:
+
+class ProvideMarkerTest:
+    def test_only_marked_parameters_are_injected(self):
+        class Service:
             pass
 
-        class Service:
-            def __init__(self, dep: Forbidden) -> None:
-                self.dep = dep
+        def handler(request: object, service: Provide[Service]):
+            return (request, service)
 
         container = Container()
-        container.never_provide(Forbidden)
+        injected = container.inject(handler)
 
-        mock_service = Service(Forbidden())
+        sentinel = object()
+        request_val, service_val = injected(sentinel)
+
+        assert request_val is sentinel
+        assert isinstance(service_val, Service)
+
+    def test_multiple_provide_markers(self):
+        class ServiceA:
+            pass
+
+        class ServiceB:
+            pass
+
+        def handler(request: object, a: Provide[ServiceA], b: Provide[ServiceB]):
+            return (request, a, b)
+
+        container = Container()
+        injected = container.inject(handler)
+
+        sentinel = object()
+        req, a, b = injected(sentinel)
+
+        assert req is sentinel
+        assert isinstance(a, ServiceA)
+        assert isinstance(b, ServiceB)
+
+    def test_injected_params_removed_from_signature(self):
+        class Service:
+            pass
+
+        def handler(request: object, service: Provide[Service]):
+            pass
+
+        container = Container()
+        injected = container.inject(handler)
+
+        sig = inspect.signature(injected)
+        param_names = list(sig.parameters.keys())
+
+        assert "request" in param_names
+        assert "service" not in param_names
+
+    def test_with_factory(self):
+        class Factory:
+            def get_db(self) -> Database:
+                return Database("sqlite://")
+
+        def handler(request: object, db: Provide[Database]):
+            return db
+
+        container = Container(Factory())
+        injected = container.inject(handler)
+
+        db = injected(object())
+        assert isinstance(db, Database)
+        assert db.connection_string == "sqlite://"
+
+    def test_with_alias(self):
+        class Interface:
+            pass
+
+        class Implementation(Interface):
+            pass
+
+        def handler(request: object, dep: Provide[Interface]):
+            return dep
+
+        container = Container()
+        container.alias(Interface, Implementation)
+        injected = container.inject(handler)
+
+        result = injected(object())
+        assert isinstance(result, Implementation)
+
+    def test_with_override(self):
+        class Service:
+            pass
+
+        def handler(request: object, svc: Provide[Service]):
+            return svc
+
+        container = Container()
+        mock_service = Service()
+
         with container.override(Service, mock_service):
-            with pytest.raises(UnknownDependencyError):
-                container.provide(Forbidden)
+            injected = container.inject(handler)
+            result = injected(object())
+
+        assert result is mock_service
+
+    def test_resolvable_unmarked_params_are_not_injected(self):
+        class DepA:
+            pass
+
+        class DepB:
+            pass
+
+        def handler(dep_a: DepA, dep_b: Provide[DepB]):
+            return (dep_a, dep_b)
+
+        container = Container()
+        injected = container.inject(handler)
+
+        sentinel = object()
+        a, b = injected(sentinel)
+
+        assert a is sentinel
+        assert isinstance(b, DepB)
+
+    def test_with_optional_type(self):
+        class Service:
+            pass
+
+        def handler(request: object, svc: Provide[Service | None]):
+            return svc
+
+        container = Container()
+        injected = container.inject(handler)
+
+        result = injected(object())
+        assert isinstance(result, Service)
+
+    def test_no_provide_markers_injects_nothing(self):
+        class Dependency:
+            pass
+
+        def function(dep: Dependency) -> Dependency:
+            return dep
+
+        container = Container()
+        injected = container.inject(function)
+
+        sentinel = object()
+        result = injected(sentinel)
+
+        assert result is sentinel

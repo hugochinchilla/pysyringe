@@ -18,6 +18,32 @@ class _Unresolved:
 _unresolved = _Unresolved()
 
 
+class _ProvideMarker:
+    pass
+
+
+_provide_marker = _ProvideMarker()
+
+
+class Provide:
+    """Type marker for explicit dependency injection.
+
+    Use ``Provide[SomeType]`` in a function decorated with
+    ``@container.inject`` to indicate which parameters should be
+    injected by the container.  Only marked parameters are injected;
+    all others are left for the caller.
+
+    Example::
+
+        @container.inject
+        def view(request, service: Provide[MyService]):
+            ...
+    """
+
+    def __class_getitem__(cls, item: type) -> type:
+        return typing.Annotated[item, _provide_marker]
+
+
 class UnknownDependencyError(Exception):
     def __init__(
         self, type_: type, resolution_chain: list[tuple[type, str]] | None = None
@@ -69,7 +95,6 @@ class _Resolver:
         self.container: "Container | None" = None
         self.mock_store = ThreadLocalMockStore()
         self.aliases: dict = {}
-        self.never_provide: list[type] = []
         self._resolution_chain: list[tuple[type, str, type]] = []
         self._factory_by_return_type: dict[type, Callable] = (
             {
@@ -83,12 +108,6 @@ class _Resolver:
     def resolve(
         self, cls: type[T], default: T | _Unresolved = _unresolved
     ) -> T | _Unresolved:
-        try:
-            if issubclass(cls, tuple(self.never_provide)):
-                return default
-        except TypeError:
-            return default
-
         mocks = self.mock_store.get_mocks()
         if cls in mocks:
             return cast(T, mocks[cls])
@@ -143,9 +162,6 @@ class Container:
         self._resolver = _Resolver(factory)
         self._resolver.container = self
 
-    def never_provide(self, cls: type[T]) -> None:
-        self._resolver.never_provide.append(cls)
-
     def provide(self, cls: type[T]) -> T:
         chain = self._resolver._resolution_chain
         depth = len(chain)
@@ -179,7 +195,6 @@ class Container:
         for cls, mock in self._resolver.mock_store.get_mocks().items():
             temp_resolver.mock_store.set_mock(cls, mock)
         temp_resolver.aliases = dict(self._resolver.aliases)
-        temp_resolver.never_provide = list(self._resolver.never_provide)
         for class_type, implementation in override_map.items():
             temp_resolver.mock_store.set_mock(class_type, implementation)
         original_resolver = self._resolver
@@ -195,6 +210,18 @@ class Container:
 
     def alias(self, interface: type, implementation: type) -> None:
         self._resolver.aliases[interface] = implementation
+
+
+def _is_provide_marker(hint: object) -> bool:
+    """Return True if *hint* is ``Provide[T]``."""
+    if typing.get_origin(hint) is not typing.Annotated:
+        return False
+    return any(arg is _provide_marker for arg in typing.get_args(hint)[1:])
+
+
+def _unwrap_provide(hint: type) -> type:
+    """Extract the inner type *T* from ``Provide[T]``."""
+    return typing.get_args(hint)[0]
 
 
 class _Injector:
@@ -218,16 +245,22 @@ class _Injector:
 
     def __get_injectable_arguments(self, function: Callable) -> dict[str, object]:
         signature = inspect.signature(function)
-        hints = typing.get_type_hints(function)
+        hints = typing.get_type_hints(function, include_extras=True)
         resolved_arguments = set()
         chain = self._resolver._resolution_chain
         for p in signature.parameters.values():
             if p.name == "self":
                 continue
+
+            hint = hints.get(p.name, p.annotation)
+            if not _is_provide_marker(hint):
+                continue
+
+            resolve_type = _TypeHelper._desambiguate(_unwrap_provide(hint))
             depth = len(chain)
             try:
                 resolved_arguments.add(
-                    (p.name, self._resolver.resolve(hints.get(p.name, p.annotation)))
+                    (p.name, self._resolver.resolve(resolve_type))
                 )
             except UnknownDependencyError:
                 pass
