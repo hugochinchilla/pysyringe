@@ -34,6 +34,14 @@ class UnknownDependencyError(Exception):
         super().__init__(message)
 
 
+class RecursiveResolutionError(Exception):
+    def __init__(self, type_: type, cycle: list[type]) -> None:
+        cycle_str = " -> ".join(t.__name__ for t in cycle)
+        super().__init__(
+            f"Recursive resolution detected for {type_.__name__}: {cycle_str}"
+        )
+
+
 class UnresolvableUnionTypeError(Exception):
     def __init__(self, type_: type) -> None:
         super().__init__(
@@ -71,6 +79,8 @@ class _Resolver:
         self.aliases: dict = {}
         self.never_provide: list[type] = []
         self._resolution_chain: list[tuple[type, str, type]] = []
+        self._resolving: set[type] = set()
+        self._resolving_stack: list[type] = []
         self._factory_by_return_type: dict[type, Callable] = (
             {
                 _TypeHelper.get_return_type(factory): factory
@@ -96,15 +106,26 @@ class _Resolver:
         if cls in self.aliases:
             return self.resolve(self.aliases[cls], default)
 
-        instance = self.__make_from_factory(cls)
-        if instance:
-            return instance
+        if cls in self._resolving:
+            start = self._resolving_stack.index(cls)
+            cycle = self._resolving_stack[start:] + [cls]
+            raise RecursiveResolutionError(cls, cycle)
 
-        instance = self.__make_from_inference(cls)
-        if instance:
-            return instance
+        self._resolving.add(cls)
+        self._resolving_stack.append(cls)
+        try:
+            instance = self.__make_from_factory(cls)
+            if instance:
+                return instance
 
-        return default
+            instance = self.__make_from_inference(cls)
+            if instance:
+                return instance
+
+            return default
+        finally:
+            self._resolving_stack.pop()
+            self._resolving.discard(cls)
 
     def __make_from_factory(self, cls: type[T]) -> T | None:
         factory = self._factory_by_return_type.get(cls)

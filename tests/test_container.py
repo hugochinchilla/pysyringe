@@ -4,6 +4,7 @@ import pytest
 
 from pysyringe.container import (
     Container,
+    RecursiveResolutionError,
     UnknownDependencyError,
     UnresolvableUnionTypeError,
 )
@@ -742,3 +743,107 @@ class ThreadLocalSingletonWithMocksTest:
         with container.override(Service, mock_service):
             with pytest.raises(UnknownDependencyError):
                 container.provide(Forbidden)
+
+
+class RecursiveResolutionTest:
+    def test_factory_that_provides_its_own_return_type_raises_error(self):
+        class Service:
+            pass
+
+        class Factory:
+            def create_service(self, container: Container) -> Service:
+                return container.provide(Service)
+
+        container = Container(Factory())
+
+        with pytest.raises(RecursiveResolutionError, match="Recursive resolution detected for Service"):
+            container.provide(Service)
+
+    def test_indirect_recursion_through_factory_raises_error(self):
+        class A:
+            pass
+
+        class B:
+            pass
+
+        class Factory:
+            def create_a(self, container: Container) -> A:
+                container.provide(B)
+                return A()
+
+            def create_b(self, container: Container) -> B:
+                container.provide(A)
+                return B()
+
+        container = Container(Factory())
+
+        with pytest.raises(RecursiveResolutionError):
+            container.provide(A)
+
+    def test_non_recursive_factory_still_works(self):
+        """A factory that calls provide() for a *different* type should work fine."""
+
+        class Config:
+            def __init__(self) -> None:
+                self.value = "ok"
+
+        class Service:
+            def __init__(self, config: Config) -> None:
+                self.config = config
+
+        class Factory:
+            def create_service(self, container: Container) -> Service:
+                config = container.provide(Config)
+                return Service(config)
+
+        container = Container(Factory())
+
+        service = container.provide(Service)
+        assert isinstance(service, Service)
+        assert service.config.value == "ok"
+
+    def test_recursive_resolution_error_message_shows_cycle(self):
+        class A:
+            pass
+
+        class B:
+            pass
+
+        class Factory:
+            def create_a(self, container: Container) -> A:
+                container.provide(B)
+                return A()
+
+            def create_b(self, container: Container) -> B:
+                container.provide(A)
+                return B()
+
+        container = Container(Factory())
+
+        with pytest.raises(RecursiveResolutionError) as exc_info:
+            container.provide(A)
+
+        message = str(exc_info.value)
+        assert "A" in message
+        assert "B" in message
+
+    def test_resolving_set_is_cleaned_up_after_error(self):
+        """After a RecursiveResolutionError, the type should be resolvable
+        again if the recursion is fixed (e.g. via a mock)."""
+
+        class Service:
+            pass
+
+        class Factory:
+            def create_service(self, container: Container) -> Service:
+                return container.provide(Service)
+
+        container = Container(Factory())
+
+        with pytest.raises(RecursiveResolutionError):
+            container.provide(Service)
+
+        # After the error, using a mock should work fine
+        mock_service = Service()
+        container.use_mock(Service, mock_service)
+        assert container.provide(Service) is mock_service
