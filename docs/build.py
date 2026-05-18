@@ -39,7 +39,7 @@ NAV_SECTIONS = [
     ),
     ("Dependency Injection", ["inject-decorator", "provide"]),
     ("Singletons", ["singleton", "thread-local-singleton"]),
-    ("Testing", ["mocks", "override-context", "legacy-mocks"]),
+    ("Testing", ["mocks", "override-context", "override-fixtures"]),
     (
         "Advanced",
         ["thread-safety", "resolution-cache", "optional-types", "errors"],

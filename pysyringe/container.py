@@ -92,10 +92,6 @@ class ThreadLocalMockStore:
         mocks = self.get_mocks()
         mocks[cls] = mock
 
-    def clear_mocks(self) -> None:
-        """Clear all mocks for the current thread."""
-        self._local.mocks = {}
-
 
 class _Resolver:
     def __init__(self, factory: object | None) -> None:
@@ -189,18 +185,11 @@ class Container:
         injector = _Injector(self._resolver)
         return injector.inject(function)
 
-    def clear_mocks(self) -> None:
-        self._resolver.mock_store.clear_mocks()
-
-    def use_mock(self, cls: type[T], mock: T) -> None:
-        self._resolver.mock_store.set_mock(cls, mock)
-
     @contextmanager
     def overrides(self, override_map: dict[type[T], T]) -> typing.Iterator[None]:
         temp_resolver = _Resolver(self._resolver.factory)
         temp_resolver.container = self
-        # Carry over existing mocks so that use_mock() set by fixtures
-        # (or earlier in the test) remains visible inside the override.
+        # Carry over outer-scope overrides so nested override() blocks see them.
         for cls, mock in self._resolver.mock_store.get_mocks().items():
             temp_resolver.mock_store.set_mock(cls, mock)
         temp_resolver.aliases = dict(self._resolver.aliases)

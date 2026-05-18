@@ -21,8 +21,8 @@ Your business logic should not know a DI container exists. No decorators on your
 - 🎯 **Explicit injection with `Provide[T]`**: mark exactly which parameters should be injected — no conflicts with framework signatures.
 - 🏭 **Factory-based wiring**: resolve by return type annotations on your factory.
 - 🧩 **Inference-based construction**: auto-wire constructor dependencies by type hints.
-- 🧪 **Test-friendly mocks**: replace any dependency per test with `use_mock(...)`.
-- 🔒 **Thread-safe mocks**: mocks are stored per-thread; aliases are global.
+- 🧪 **Test-friendly overrides**: replace any dependency per test with the `override(...)` context manager — automatic cleanup, no leakage between tests.
+- 🔒 **Thread-safe overrides**: overrides are scoped per-thread; aliases are global.
 - 🧰 **Aliases**: map interfaces to implementations without writing factory methods.
 - ⚡ **Resolution cache**: caches factory lookups and constructor introspection (not instances).
 
@@ -109,10 +109,11 @@ def get_now(request: HttpRequest, calendar: Provide[CalendarInterface]) -> HttpR
 
 `request` is provided by Django as usual. `calendar` is injected by the container. No `never_provide()` needed — the container only touches what you explicitly mark.
 
-### 5.1) Test with mocks (new syntax)
+### 5) Test with overrides
+
+Use the `override()` context manager to swap dependencies in tests. The original wiring is automatically restored when the `with` block exits, so mocks never leak between tests.
 
 ```python
-import pytest
 from pysyringe import Container
 from myapp.domain import UserRepository
 from myapp.usecases import SignupUserService
@@ -129,32 +130,23 @@ def test_create_user():
     assert user_repository.get_by_email("john.doe@example.org")
 ```
 
-### 5.2) Test with mocks (old syntax)
-
-Mocks are thread-local. Configure them per-test and clear afterwards.
+For shared test setup, wrap `override()` in a pytest fixture:
 
 ```python
 import pytest
-from pysyringe import Container
-from myapp.domain import UserRepository
-from myapp.usecases import SignupUserService
-from myapp.infra.testing import InMemoryUserRepository
 
 
-@pytest.fixture(autouse=True)
-def clear_container_mocks_after_each_test():
-    yield
-    container.clear_mocks()
+@pytest.fixture
+def fake_repo():
+    repo = InMemoryUserRepository()
+    with container.override(UserRepository, repo):
+        yield repo
 
 
-def test_create_user():
-    user_repository = InMemoryUserRepository()
-    container.use_mock(UserRepository, user_repository)
+def test_create_user(fake_repo):
     service = container.provide(SignupUserService)
-
     service.signup("John Doe", "john.doe@example.org")
-
-    assert user_repository.get_by_email("john.doe@example.org")
+    assert fake_repo.get_by_email("john.doe@example.org")
 ```
 
 ### ⚡ Resolution cache
@@ -225,12 +217,11 @@ Each thread gets its own `DatabaseSession` instance. Within the same thread, rep
 
 ### 🔒 Thread safety
 
-The `Container` is thread-safe with respect to mocks. Mocks configured after the container has been created are stored in thread-local storage, so changes made to mocks in one thread do not affect other threads.
+The `Container` is thread-safe with respect to test overrides. Overrides set inside an `override()` / `overrides()` block are stored in thread-local storage, so they do not affect other threads.
 
 - **Shared across all threads**: `alias(...)` and the factory configuration (methods on your factory used for resolution).
-- **Thread-local**: `use_mock(...)` and `clear_mocks()` operate only on the calling thread's mock store.
+- **Thread-local**: `override(...)` and `overrides(...)` only apply to the calling thread.
 
 Implications:
-- Using `use_mock(SomeType, mock_instance)` in one thread will not change what another thread receives for `SomeType`.
-- Calling `clear_mocks()` clears only the current thread's mocks.
-- To share a behavior globally across threads, prefer `alias(...)` or implement a factory method instead of relying on mocks.
+- An `override()` block in one thread does not change what another thread receives for the same type.
+- To share a behavior globally across threads, prefer `alias(...)` or a factory method instead of `override()`.

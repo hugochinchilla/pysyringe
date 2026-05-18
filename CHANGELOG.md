@@ -40,6 +40,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Container.never_provide()` — no longer needed because `@container.inject` only
   injects `Provide[T]`-marked parameters. Framework types like `HttpRequest` are
   simply left unmarked.
+- **Breaking:** `Container.use_mock()` and `Container.clear_mocks()` — the manual
+  mock API has been removed in favour of the `override()` / `overrides()` context
+  managers, which always clean up (even on exceptions) and cannot leak state
+  between tests. For shared setup, wrap `override()` in a pytest fixture. See
+  `MIGRATION.md` for the replacement patterns.
 
 ## [1.5.2]
 

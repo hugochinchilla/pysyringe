@@ -74,6 +74,58 @@ This method no longer exists. It was a workaround for the implicit injection
 behaviour. With explicit `Provide[T]` markers, the container only touches
 parameters you explicitly mark — there is nothing to blacklist.
 
+## `Container.use_mock()` and `Container.clear_mocks()` removed
+
+The manual mock API has been removed in favour of the `override()` /
+`overrides()` context managers. Manual mocks were a footgun: forgetting
+`clear_mocks()` (for example, when a test raised before reaching teardown)
+silently leaked state into other tests. Context managers always clean up,
+even on exceptions.
+
+### Before (1.x)
+
+```python
+def test_create_user():
+    container.use_mock(UserRepository, InMemoryUserRepository())
+    service = container.provide(SignupUserService)
+    service.signup("Jane", "jane@example.org")
+    container.clear_mocks()  # easy to forget
+```
+
+### After (2.0)
+
+```python
+def test_create_user():
+    with container.override(UserRepository, InMemoryUserRepository()):
+        service = container.provide(SignupUserService)
+        service.signup("Jane", "jane@example.org")
+    # cleanup is automatic
+```
+
+### Shared setup with pytest fixtures
+
+If multiple tests need the same replacement, wrap `override()` in a fixture:
+
+```python
+import pytest
+
+
+@pytest.fixture
+def fake_repo():
+    repo = InMemoryUserRepository()
+    with container.override(UserRepository, repo):
+        yield repo
+
+
+def test_create_user(fake_repo):
+    service = container.provide(SignupUserService)
+    service.signup("Jane", "jane@example.org")
+    assert fake_repo.get_by_email("jane@example.org")
+```
+
+This replaces the `autouse` fixture + `clear_mocks()` pattern and is
+exception-safe by construction.
+
 ## New package-level imports
 
 `Container` and `Provide` are now re-exported from the `pysyringe` package:
@@ -91,7 +143,6 @@ from pysyringe.container import Container, Provide
 - `container.provide(SomeType)` works the same way.
 - `container.alias(...)` works the same way.
 - `container.override(...)` and `container.overrides(...)` work the same way.
-- `container.use_mock(...)` and `container.clear_mocks()` work the same way.
 - `singleton()` and `thread_local_singleton()` work the same way.
 - Constructor inference for `container.provide()` is unchanged.
 - Thread safety guarantees are unchanged.

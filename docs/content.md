@@ -66,7 +66,7 @@ The optional `factory` argument is any object whose public methods serve as fact
 
 When you call `container.provide(SomeType)`, the container follows a strict resolution order:
 
-1. **Mock store** --- Check the current thread's mock store. If a mock was registered via `use_mock()` or `override()`, return it.
+1. **Override store** --- Check the current thread's override store. If a replacement was registered via `override()` / `overrides()`, return it.
 2. **Alias lookup** --- If the type was registered with `alias()`, recursively resolve the mapped implementation type.
 3. **Factory methods** --- Look up a factory method by return-type annotation. If found, call it and return the result. If the factory method accepts a `Container` parameter, the container passes itself.
 4. **Constructor inference** --- Inspect the type's constructor, recursively resolve each parameter by its type hint, and construct the instance.
@@ -149,7 +149,7 @@ mailer = container.provide(EmailSender)  # Factory receives the container
 This is especially useful when:
 
 - A factory needs dependencies that are themselves resolvable by the container (via inference or other factories).
-- You want factory-created objects to respect active `override()` or `use_mock()` replacements during tests.
+- You want factory-created objects to respect active `override()` replacements during tests.
 - You need to combine factory logic with the container's recursive resolution.
 
 Factory methods without a `Container` parameter continue to work exactly as before---called with no arguments.
@@ -308,13 +308,11 @@ Best for: database sessions, request-scoped state, and other resources that are 
 | `singleton()` | Global | Double-checked locking | Connection pools, HTTP clients |
 | `thread_local_singleton()` | Per-thread | Thread-local storage | Database sessions, request state |
 
-## Mocks & Overrides {#mocks}
+## Overrides {#mocks}
 
-PySyringe makes it easy to replace dependencies in tests. The recommended approach uses the `override()` context manager.
+PySyringe replaces dependencies in tests through the `override()` and `overrides()` context managers. The original wiring is automatically restored when the `with` block exits, so there is no risk of state leaking between tests.
 
 ### Override Context Manager {#override-context}
-
-The `override()` and `overrides()` context managers temporarily replace dependencies for the duration of a `with` block. When the block exits, the original behavior is automatically restored.
 
 #### Single dependency
 
@@ -341,28 +339,28 @@ def test_with_multiple_overrides():
         service.signup("Jane", "jane@example.org")
 ```
 
-!!! note "Recommended"
-    Prefer `override()` / `overrides()` over the legacy `use_mock()` API. Context managers guarantee cleanup, preventing mock leakage between tests.
+### Sharing setup across tests {#override-fixtures}
 
-### Legacy Mock API {#legacy-mocks}
-
-The `use_mock()` and `clear_mocks()` methods provide a manual mock API. You are responsible for clearing mocks after each test.
+For shared setup across multiple tests, wrap `override()` in a pytest fixture. The `with` block stays open for the duration of the test, then unwinds during teardown:
 
 ```python
 import pytest
 
 
-@pytest.fixture(autouse=True)
-def clear_container_mocks():
-    yield
-    container.clear_mocks()
+@pytest.fixture
+def fake_repo():
+    repo = InMemoryUserRepository()
+    with container.override(UserRepository, repo):
+        yield repo
 
 
-def test_user_signup():
-    container.use_mock(UserRepository, InMemoryUserRepository())
+def test_user_signup(fake_repo):
     service = container.provide(SignupUserService)
     service.signup("Jane", "jane@example.org")
+    assert fake_repo.get_by_email("jane@example.org")
 ```
+
+You can also stack multiple `override()` blocks (or use `overrides()` with several entries) inside a single fixture if a group of tests needs the same combination of replacements.
 
 ## Thread Safety {#thread-safety}
 
@@ -372,16 +370,14 @@ PySyringe is designed with thread safety in mind:
 |---------|-------|---------|
 | `alias()` | Global | Shared across all threads. Configure at startup. |
 | Factory methods | Global | Indexed at container initialization. Shared across threads. |
-| `use_mock()` | Per-thread | Stored in thread-local storage. No cross-thread leakage. |
-| `clear_mocks()` | Per-thread | Clears only the current thread's mocks. |
+| `override()` / `overrides()` | Per-thread | Replacements are stored in thread-local storage. No cross-thread leakage. |
 | `singleton()` | Global | Thread-safe creation via double-checked locking. |
 | `thread_local_singleton()` | Per-thread | One instance per thread via `threading.local()`. |
 
 Implications:
 
-- Calling `use_mock(SomeType, mock)` in one thread does not affect other threads.
-- Calling `clear_mocks()` clears only the current thread's mocks.
-- To share behavior globally, use `alias()` or a factory method instead of mocks.
+- An `override()` block in one thread does not affect what another thread receives for the same type.
+- To share behavior globally, use `alias()` or a factory method instead of `override()`.
 
 ## Resolution Cache {#resolution-cache}
 
@@ -548,26 +544,6 @@ Context manager that temporarily replaces multiple dependencies at once.
 <tr><td>override_map</td><td>dict[type, object]</td><td>A mapping of types to their replacement instances.</td></tr>
 </tbody>
 </table>
-
-### container.use_mock(cls, mock)
-
-<code class="api-signature">use_mock(cls: type[T], mock: T) -> None</code>
-
-Set a mock for a type in the current thread. Thread-local: does not affect other threads. Prefer `override()` for new code.
-
-<table class="param-table">
-<thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
-<tbody>
-<tr><td>cls</td><td>type[T]</td><td>The type to mock.</td></tr>
-<tr><td>mock</td><td>T</td><td>The mock instance.</td></tr>
-</tbody>
-</table>
-
-### container.clear_mocks()
-
-<code class="api-signature">clear_mocks() -> None</code>
-
-Clear all mocks for the current thread. Only affects the calling thread.
 
 ## Singleton API {#api-singleton}
 
