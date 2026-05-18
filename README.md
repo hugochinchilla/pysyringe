@@ -92,18 +92,16 @@ container.alias(CalendarInterface, Calendar)
 Sometimes you have a single concrete object that satisfies several ports, and you'd rather build it yourself than describe it to the container — typically because its constructor takes runtime values (settings, secrets) that aren't themselves container-resolvable. `register_instance(port, instance)` binds an existing object to a type; the same instance can be registered for multiple ports.
 
 ```python
-from myapp.infra import StripePaymentGateway
+import os
+from myapp.domain import Cache, RateLimiter
+from myapp.infra import RedisClient
 
-gateway = StripePaymentGateway(
-    webhook_secrets=settings.STRIPE_WEBHOOK_SECRETS,
-    api_key=settings.STRIPE_SECRET_KEY,
-    api_base=settings.STRIPE_API_BASE,
-)
+# RedisClient implements both Cache and RateLimiter; its constructor
+# takes runtime values that aren't container-resolvable.
+client = RedisClient(url=os.environ["REDIS_URL"], max_connections=20)
 
-container.register_instance(StripeWebhookVerifier, gateway)
-container.register_instance(StripeCustomerGateway, gateway)
-container.register_instance(StripeCheckoutGateway, gateway)
-container.register_instance(StripeBillingPortalGateway, gateway)
+container.register_instance(Cache, client)
+container.register_instance(RateLimiter, client)
 ```
 
 Registrations are process-wide and shared across threads. They take precedence over `alias()` and factory methods, but `override()` and `use_mock()` can still replace them in tests.

@@ -317,39 +317,54 @@
 <li>You need to construct an object yourself because its constructor takes runtime values (settings, secrets, environment-dependent URLs) that aren&rsquo;t container-resolvable.</li>
 <li>A single concrete object satisfies multiple abstract ports and you want all four ports to resolve to the same instance.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">StripeWebhookVerifier</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span> <span class="o">...</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">StripeCustomerGateway</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span> <span class="o">...</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">StripeCheckoutGateway</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span> <span class="o">...</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">StripeBillingPortalGateway</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span> <span class="o">...</span>
+<h4 id="single-port">Single port</h4>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">StripePaymentGateway</span><span class="p">(</span>
-    <span class="n">StripeWebhookVerifier</span><span class="p">,</span>
-    <span class="n">StripeCustomerGateway</span><span class="p">,</span>
-    <span class="n">StripeCheckoutGateway</span><span class="p">,</span>
-    <span class="n">StripeBillingPortalGateway</span><span class="p">,</span>
-<span class="p">):</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">webhook_secrets</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
-        <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">api_base</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AppConfig</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">database_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">database_url</span> <span class="o">=</span> <span class="n">database_url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">debug</span> <span class="o">=</span> <span class="n">debug</span>
 
 
-<span class="n">gateway</span> <span class="o">=</span> <span class="n">StripePaymentGateway</span><span class="p">(</span>
-    <span class="n">webhook_secrets</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">STRIPE_WEBHOOK_SECRETS</span><span class="p">,</span>
-    <span class="n">api_key</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">STRIPE_SECRET_KEY</span><span class="p">,</span>
-    <span class="n">api_base</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">STRIPE_API_BASE</span><span class="p">,</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">AppConfig</span><span class="p">(</span>
+    <span class="n">database_url</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">],</span>
+    <span class="n">debug</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="n">container</span><span class="o">.</span><span class="n">register_instance</span><span class="p">(</span><span class="n">StripeWebhookVerifier</span><span class="p">,</span> <span class="n">gateway</span><span class="p">)</span>
-<span class="n">container</span><span class="o">.</span><span class="n">register_instance</span><span class="p">(</span><span class="n">StripeCustomerGateway</span><span class="p">,</span> <span class="n">gateway</span><span class="p">)</span>
-<span class="n">container</span><span class="o">.</span><span class="n">register_instance</span><span class="p">(</span><span class="n">StripeCheckoutGateway</span><span class="p">,</span> <span class="n">gateway</span><span class="p">)</span>
-<span class="n">container</span><span class="o">.</span><span class="n">register_instance</span><span class="p">(</span><span class="n">StripeBillingPortalGateway</span><span class="p">,</span> <span class="n">gateway</span><span class="p">)</span>
+<span class="n">container</span><span class="o">.</span><span class="n">register_instance</span><span class="p">(</span><span class="n">AppConfig</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
 </code></pre></div>
 
+<h4 id="same-instance-for-multiple-ports">Same instance for multiple ports</h4>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">abc</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Cache</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">RateLimiter</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">allow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">RedisClient</span><span class="p">(</span><span class="n">Cache</span><span class="p">,</span> <span class="n">RateLimiter</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_connections</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_connections</span> <span class="o">=</span> <span class="n">max_connections</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">allow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span>
+
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">RedisClient</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;REDIS_URL&quot;</span><span class="p">],</span> <span class="n">max_connections</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+
+<span class="n">container</span><span class="o">.</span><span class="n">register_instance</span><span class="p">(</span><span class="n">Cache</span><span class="p">,</span> <span class="n">client</span><span class="p">)</span>
+<span class="n">container</span><span class="o">.</span><span class="n">register_instance</span><span class="p">(</span><span class="n">RateLimiter</span><span class="p">,</span> <span class="n">client</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Both <code>provide(Cache)</code> and <code>provide(RateLimiter)</code> now return the same <code>RedisClient</code> object.</p>
 <p>Registrations are process-wide and shared across threads. They take precedence over <code>alias()</code> and factory methods.</p>
 <div class="callout note">
 <strong>Note</strong>

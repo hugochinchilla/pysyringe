@@ -224,39 +224,58 @@ This is the right tool when:
 - You need to construct an object yourself because its constructor takes runtime values (settings, secrets, environment-dependent URLs) that aren't container-resolvable.
 - A single concrete object satisfies multiple abstract ports and you want all four ports to resolve to the same instance.
 
+#### Single port
+
 ```python
-class StripeWebhookVerifier(abc.ABC): ...
-class StripeCustomerGateway(abc.ABC): ...
-class StripeCheckoutGateway(abc.ABC): ...
-class StripeBillingPortalGateway(abc.ABC): ...
+import os
 
 
-class StripePaymentGateway(
-    StripeWebhookVerifier,
-    StripeCustomerGateway,
-    StripeCheckoutGateway,
-    StripeBillingPortalGateway,
-):
-    def __init__(
-        self,
-        *,
-        webhook_secrets: tuple[str, ...],
-        api_key: str | None,
-        api_base: str | None,
-    ) -> None: ...
+class AppConfig:
+    def __init__(self, database_url: str, debug: bool) -> None:
+        self.database_url = database_url
+        self.debug = debug
 
 
-gateway = StripePaymentGateway(
-    webhook_secrets=settings.STRIPE_WEBHOOK_SECRETS,
-    api_key=settings.STRIPE_SECRET_KEY,
-    api_base=settings.STRIPE_API_BASE,
+config = AppConfig(
+    database_url=os.environ["DATABASE_URL"],
+    debug=os.environ.get("DEBUG") == "1",
 )
 
-container.register_instance(StripeWebhookVerifier, gateway)
-container.register_instance(StripeCustomerGateway, gateway)
-container.register_instance(StripeCheckoutGateway, gateway)
-container.register_instance(StripeBillingPortalGateway, gateway)
+container.register_instance(AppConfig, config)
 ```
+
+#### Same instance for multiple ports
+
+```python
+import abc
+
+
+class Cache(abc.ABC):
+    @abc.abstractmethod
+    def get(self, key: str) -> str | None: ...
+
+
+class RateLimiter(abc.ABC):
+    @abc.abstractmethod
+    def allow(self, key: str) -> bool: ...
+
+
+class RedisClient(Cache, RateLimiter):
+    def __init__(self, *, url: str, max_connections: int) -> None:
+        self.url = url
+        self.max_connections = max_connections
+
+    def get(self, key: str) -> str | None: ...
+    def allow(self, key: str) -> bool: ...
+
+
+client = RedisClient(url=os.environ["REDIS_URL"], max_connections=20)
+
+container.register_instance(Cache, client)
+container.register_instance(RateLimiter, client)
+```
+
+Both `provide(Cache)` and `provide(RateLimiter)` now return the same `RedisClient` object.
 
 Registrations are process-wide and shared across threads. They take precedence over `alias()` and factory methods.
 
