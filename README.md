@@ -24,6 +24,7 @@ Your business logic should not know a DI container exists. No decorators on your
 - 🧪 **Test-friendly overrides**: replace any dependency per test with the `override(...)` context manager — automatic cleanup, no leakage between tests.
 - 🔒 **Thread-safe overrides**: overrides are scoped per-thread; aliases are global.
 - 🧰 **Aliases**: map interfaces to implementations without writing factory methods.
+- 📌 **Pre-built instances**: bind a single object to one or more ports with `register_instance(...)`.
 - ⚡ **Resolution cache**: caches factory lookups and constructor introspection (not instances).
 
 ## Installation
@@ -85,6 +86,27 @@ from myapp.infra import Calendar
 
 container.alias(CalendarInterface, Calendar)
 ```
+
+### 3.1) Register a pre-built instance
+
+Sometimes you have a single concrete object that satisfies several ports, and you'd rather build it yourself than describe it to the container — typically because its constructor takes runtime values (settings, secrets) that aren't themselves container-resolvable. `register_instance(port, instance)` binds an existing object to a type; the same instance can be registered for multiple ports.
+
+```python
+from myapp.infra import StripePaymentGateway
+
+gateway = StripePaymentGateway(
+    webhook_secrets=settings.STRIPE_WEBHOOK_SECRETS,
+    api_key=settings.STRIPE_SECRET_KEY,
+    api_base=settings.STRIPE_API_BASE,
+)
+
+container.register_instance(StripeWebhookVerifier, gateway)
+container.register_instance(StripeCustomerGateway, gateway)
+container.register_instance(StripeCheckoutGateway, gateway)
+container.register_instance(StripeBillingPortalGateway, gateway)
+```
+
+Registrations are process-wide and shared across threads. They take precedence over `alias()` and factory methods, but `override()` and `use_mock()` can still replace them in tests.
 
 ### 4) Inject at the call site
 
@@ -219,7 +241,7 @@ Each thread gets its own `DatabaseSession` instance. Within the same thread, rep
 
 The `Container` is thread-safe with respect to test overrides. Overrides set inside an `override()` / `overrides()` block are stored in thread-local storage, so they do not affect other threads.
 
-- **Shared across all threads**: `alias(...)` and the factory configuration (methods on your factory used for resolution).
+- **Shared across all threads**: `alias(...)`, `register_instance(...)`, and the factory configuration (methods on your factory used for resolution).
 - **Thread-local**: `override(...)` and `overrides(...)` only apply to the calling thread.
 
 Implications:

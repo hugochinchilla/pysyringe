@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `Container.register_instance(cls, instance)` for binding a pre-built object to
+  one or more types. Useful when a single concrete object satisfies several
+  abstract ports and its constructor takes runtime values (settings, secrets)
+  that aren't container-resolvable. Registrations are process-wide, shared
+  across threads, and take precedence over `alias()` and factory methods, while
+  still being replaceable by `override()` in tests.
+
 ## [2.0.0]
 
 ### Added

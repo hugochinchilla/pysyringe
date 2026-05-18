@@ -47,6 +47,7 @@
       <a href="#container-aware-factories">Container-Aware Factories</a>
       <a href="#inference">Constructor Inference</a>
       <a href="#aliases">Aliases</a>
+      <a href="#register-instance">Registered Instances</a>
     </div>
     <div class="nav-section">
       <div class="nav-section-title">Dependency Injection</div>
@@ -175,6 +176,7 @@
 <p>When you call <code>container.provide(SomeType)</code>, the container follows a strict resolution order:</p>
 <ol>
 <li><strong>Override store</strong> &mdash; Check the current thread&rsquo;s override store. If a replacement was registered via <code>override()</code> / <code>overrides()</code>, return it.</li>
+<li><strong>Registered instance</strong> &mdash; If a pre-built object was registered for the type via <code>register_instance()</code>, return it.</li>
 <li><strong>Alias lookup</strong> &mdash; If the type was registered with <code>alias()</code>, recursively resolve the mapped implementation type.</li>
 <li><strong>Factory methods</strong> &mdash; Look up a factory method by return-type annotation. If found, call it and return the result. If the factory method accepts a <code>Container</code> parameter, the container passes itself.</li>
 <li><strong>Constructor inference</strong> &mdash; Inspect the type&rsquo;s constructor, recursively resolve each parameter by its type hint, and construct the instance.</li>
@@ -308,6 +310,51 @@
 </code></pre></div>
 
 <p>The implementation is constructed via inference, so its dependencies are resolved recursively. You don&rsquo;t need a factory method for aliased types.</p>
+<h2 id="register-instance" class="section-anchor">Registered Instances</h2>
+<p><code>register_instance(port, instance)</code> binds a pre-built object to a type. When the type is requested, the container hands back the exact object you passed in &mdash; no construction, no resolution.</p>
+<p>This is the right tool when:</p>
+<ul>
+<li>You need to construct an object yourself because its constructor takes runtime values (settings, secrets, environment-dependent URLs) that aren&rsquo;t container-resolvable.</li>
+<li>A single concrete object satisfies multiple abstract ports and you want all four ports to resolve to the same instance.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">StripeWebhookVerifier</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span> <span class="o">...</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">StripeCustomerGateway</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span> <span class="o">...</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">StripeCheckoutGateway</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span> <span class="o">...</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">StripeBillingPortalGateway</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span> <span class="o">...</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">StripePaymentGateway</span><span class="p">(</span>
+    <span class="n">StripeWebhookVerifier</span><span class="p">,</span>
+    <span class="n">StripeCustomerGateway</span><span class="p">,</span>
+    <span class="n">StripeCheckoutGateway</span><span class="p">,</span>
+    <span class="n">StripeBillingPortalGateway</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">webhook_secrets</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+        <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">api_base</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+
+
+<span class="n">gateway</span> <span class="o">=</span> <span class="n">StripePaymentGateway</span><span class="p">(</span>
+    <span class="n">webhook_secrets</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">STRIPE_WEBHOOK_SECRETS</span><span class="p">,</span>
+    <span class="n">api_key</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">STRIPE_SECRET_KEY</span><span class="p">,</span>
+    <span class="n">api_base</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">STRIPE_API_BASE</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">container</span><span class="o">.</span><span class="n">register_instance</span><span class="p">(</span><span class="n">StripeWebhookVerifier</span><span class="p">,</span> <span class="n">gateway</span><span class="p">)</span>
+<span class="n">container</span><span class="o">.</span><span class="n">register_instance</span><span class="p">(</span><span class="n">StripeCustomerGateway</span><span class="p">,</span> <span class="n">gateway</span><span class="p">)</span>
+<span class="n">container</span><span class="o">.</span><span class="n">register_instance</span><span class="p">(</span><span class="n">StripeCheckoutGateway</span><span class="p">,</span> <span class="n">gateway</span><span class="p">)</span>
+<span class="n">container</span><span class="o">.</span><span class="n">register_instance</span><span class="p">(</span><span class="n">StripeBillingPortalGateway</span><span class="p">,</span> <span class="n">gateway</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Registrations are process-wide and shared across threads. They take precedence over <code>alias()</code> and factory methods.</p>
+<div class="callout note">
+<strong>Note</strong>
+<p><code>override()</code> and <code>use_mock()</code> still beat <code>register_instance()</code>, so tests can replace a registered production object the same way they replace anything else.</p>
+</div>
 <h2 id="inject-decorator" class="section-anchor">The @inject Decorator and Provide[T]</h2>
 <p>The <code>@container.inject</code> decorator is the primary way to wire dependencies into your application&rsquo;s entry points (HTTP handlers, CLI commands, message consumers, etc.).</p>
 <p>Use the <code>Provide[T]</code> type marker to indicate which parameters should be injected. Only marked parameters are injected; all others are left for the caller.</p>
@@ -462,6 +509,11 @@
 <td>Shared across all threads. Configure at startup.</td>
 </tr>
 <tr>
+<td><code>register_instance()</code></td>
+<td>Global</td>
+<td>Shared across all threads. Configure at startup.</td>
+</tr>
+<tr>
 <td>Factory methods</td>
 <td>Global</td>
 <td>Indexed at container initialization. Shared across threads.</td>
@@ -588,6 +640,17 @@
 <tbody>
 <tr><td>interface</td><td>type</td><td>The abstract type or interface.</td></tr>
 <tr><td>implementation</td><td>type</td><td>The concrete type to use.</td></tr>
+</tbody>
+</table>
+
+<h3 id="containerregister_instancecls-instance" class="section-anchor">container.register_instance(cls, instance)</h3>
+<p><code class="api-signature">register_instance(cls: type[T], instance: T) -&gt; None</code></p>
+<p>Bind a pre-built object as the implementation for a type. Subsequent calls to <code>provide(cls)</code> return the registered object as-is. The same instance can be registered for several types to share one concrete object across multiple ports. Registrations are process-wide (not thread-local) and take precedence over <code>alias()</code> and factory methods, but can still be replaced by <code>override()</code> or <code>use_mock()</code>.</p>
+<table class="param-table">
+<thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>cls</td><td>type[T]</td><td>The type (typically an abstract port) to bind.</td></tr>
+<tr><td>instance</td><td>T</td><td>The pre-built object to return when this type is requested.</td></tr>
 </tbody>
 </table>
 
