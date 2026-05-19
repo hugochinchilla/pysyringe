@@ -7,25 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- `Container.register_instance(cls, instance)` for binding a pre-built object to
-  one or more types. Useful when a single concrete object satisfies several
-  abstract ports and its constructor takes runtime values (settings, secrets)
-  that aren't container-resolvable. Registrations are process-wide, shared
-  across threads, and take precedence over `alias()` and factory methods, while
-  still being replaceable by `override()` in tests.
-
-### Removed
-
-- **Breaking:** `Container.use_mock()` and `Container.clear_mocks()`. The
-  manual mock API was a footgun: forgetting `clear_mocks()` (or skipping
-  teardown when a test failed before reaching it) silently leaked state into
-  other tests. Use the `override()` / `overrides()` context managers instead —
-  they always clean up, even on exceptions. See `MIGRATION.md` for the
-  rewrite pattern, including a pytest fixture that yields inside the `with`
-  block for shared setup.
-
 ## [2.0.0]
 
 ### Added
@@ -33,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `py.typed` PEP 561 marker for type-checker support.
 - `Container` and `Provide` are now re-exported from the top-level package, so you
   can write `from pysyringe import Container, Provide`.
+- `Container.register_instance(cls, instance)` for binding a pre-built object to
+  one or more types. Useful when a single concrete object satisfies several
+  abstract ports and its constructor takes runtime values (settings, secrets)
+  that aren't container-resolvable. Registrations are process-wide, shared
+  across threads, and take precedence over `alias()` and factory methods, while
+  still being replaceable by `override()` in tests.
 
 ### Changed
 
@@ -61,6 +48,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Container.never_provide()` — no longer needed because `@container.inject` only
   injects `Provide[T]`-marked parameters. Framework types like `HttpRequest` are
   simply left unmarked.
+- **Breaking:** `Container.use_mock()` and `Container.clear_mocks()`. The
+  manual mock API was a footgun: forgetting `clear_mocks()` (or skipping
+  teardown when a test failed before reaching it) silently leaked state into
+  other tests. Use the `override()` / `overrides()` context managers instead —
+  they always clean up, even on exceptions. See `MIGRATION.md` for the
+  rewrite pattern, including a pytest fixture that yields inside the `with`
+  block for shared setup.
 
 ## [1.5.2]
 

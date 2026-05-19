@@ -1,74 +1,6 @@
-# Migrating
+# Migrating from 1.x to 2.0
 
-## Migrating to 2.1: `Container.use_mock()` and `Container.clear_mocks()` removed
-
-The manual mock API has been removed in favor of the `override()` /
-`overrides()` context managers. The manual API was a footgun: forgetting
-`clear_mocks()` (or skipping teardown when a test failed before reaching
-it) silently leaked state into other tests. The context managers always
-clean up, even on exceptions.
-
-### Before
-
-```python
-import pytest
-
-
-@pytest.fixture(autouse=True)
-def clear_container_mocks():
-    yield
-    container.clear_mocks()
-
-
-def test_create_user():
-    container.use_mock(UserRepository, InMemoryUserRepository())
-    service = container.provide(SignupUserService)
-    ...
-```
-
-### After
-
-```python
-def test_create_user():
-    with container.override(UserRepository, InMemoryUserRepository()):
-        service = container.provide(SignupUserService)
-        ...
-```
-
-For shared setup, wrap `override()` in a pytest fixture and yield from
-inside the `with` block — exception-safe by construction, no
-`autouse` teardown needed:
-
-```python
-import pytest
-
-
-@pytest.fixture
-def user_repository():
-    repo = InMemoryUserRepository()
-    with container.override(UserRepository, repo):
-        yield repo
-
-
-def test_create_user(user_repository):
-    service = container.provide(SignupUserService)
-    ...
-```
-
-For replacing several dependencies at once, use `overrides()`:
-
-```python
-with container.overrides({
-    UserRepository: InMemoryUserRepository(),
-    EmailSender: FakeEmailSender(),
-}):
-    service = container.provide(SignupUserService)
-    ...
-```
-
-## Migrating from 1.x to 2.0
-
-### `@container.inject` requires `Provide[T]` markers
+## `@container.inject` requires `Provide[T]` markers
 
 In 1.x, `@container.inject` automatically injected every parameter whose type
 the container could resolve. This caused conflicts with frameworks like Django
@@ -136,13 +68,79 @@ def view(request: HttpRequest, service: Provide[MyService]):
 (mypy, pyright) treat it as equivalent to `T`, so your type checking continues
 to work without changes.
 
-### `Container.never_provide()` removed
+## `Container.never_provide()` removed
 
 This method no longer exists. It was a workaround for the implicit injection
 behaviour. With explicit `Provide[T]` markers, the container only touches
 parameters you explicitly mark — there is nothing to blacklist.
 
-### New package-level imports
+## `Container.use_mock()` and `Container.clear_mocks()` removed
+
+The manual mock API has been removed in favor of the `override()` /
+`overrides()` context managers. The manual API was a footgun: forgetting
+`clear_mocks()` (or skipping teardown when a test failed before reaching
+it) silently leaked state into other tests. The context managers always
+clean up, even on exceptions.
+
+### Before (1.x)
+
+```python
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def clear_container_mocks():
+    yield
+    container.clear_mocks()
+
+
+def test_create_user():
+    container.use_mock(UserRepository, InMemoryUserRepository())
+    service = container.provide(SignupUserService)
+    ...
+```
+
+### After (2.0)
+
+```python
+def test_create_user():
+    with container.override(UserRepository, InMemoryUserRepository()):
+        service = container.provide(SignupUserService)
+        ...
+```
+
+For shared setup, wrap `override()` in a pytest fixture and yield from
+inside the `with` block — exception-safe by construction, no
+`autouse` teardown needed:
+
+```python
+import pytest
+
+
+@pytest.fixture
+def user_repository():
+    repo = InMemoryUserRepository()
+    with container.override(UserRepository, repo):
+        yield repo
+
+
+def test_create_user(user_repository):
+    service = container.provide(SignupUserService)
+    ...
+```
+
+For replacing several dependencies at once, use `overrides()`:
+
+```python
+with container.overrides({
+    UserRepository: InMemoryUserRepository(),
+    EmailSender: FakeEmailSender(),
+}):
+    service = container.provide(SignupUserService)
+    ...
+```
+
+## New package-level imports
 
 `Container` and `Provide` are now re-exported from the `pysyringe` package:
 
@@ -154,7 +152,7 @@ from pysyringe import Container, Provide
 from pysyringe.container import Container, Provide
 ```
 
-### Everything else is unchanged
+## Everything else is unchanged
 
 - `container.provide(SomeType)` works the same way.
 - `container.alias(...)` works the same way.
