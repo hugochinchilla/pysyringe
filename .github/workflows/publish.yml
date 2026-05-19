@@ -38,23 +38,26 @@ jobs:
       - name: Clean working tree
         run: git reset --hard ${{ github.ref }}
 
-      - name: Update CHANGELOG for release
+      - name: Verify tag matches __version__
+        env:
+          TAG_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          FILE_VERSION=$(uvx hatch version)
+          if [ "$FILE_VERSION" != "$TAG_VERSION" ]; then
+            echo "Tag version ($TAG_VERSION) does not match pysyringe/__init__.py ($FILE_VERSION)" >&2
+            exit 1
+          fi
+
+      - name: Verify CHANGELOG has entry for this version
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          TAG: ${{ github.ref_name }}
         run: |
-          DATE=$(date +%Y-%m-%d)
-          sed -i "s/^## \[Unreleased\].*/## [Unreleased]\n\n## [${VERSION}] — ${DATE}/" CHANGELOG.md
-          sed -i "s|\[Unreleased\]: \(.*\)/compare/.*\.\.\.HEAD|[Unreleased]: \1/compare/${TAG}...HEAD|" CHANGELOG.md
-          PREV_TAG=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo "")
-          if [ -n "$PREV_TAG" ]; then
-            REPO_URL="https://github.com/hugochinchilla/pysyringe"
-            sed -i "/^\[Unreleased\]:/a [${VERSION}]: ${REPO_URL}/compare/${PREV_TAG}...${TAG}" CHANGELOG.md
+          if ! grep -E "^## \[${VERSION}\]( |$)" CHANGELOG.md > /dev/null; then
+            echo "CHANGELOG.md is missing a '## [${VERSION}]' section. Move your Unreleased notes under '## [${VERSION}] — <date>' before tagging." >&2
+            exit 1
           fi
 
       - name: Build wheel and sdist
-        env:
-          SETUPTOOLS_SCM_PRETEND_VERSION: ${{ steps.version.outputs.version }}
         run: uv build
 
       - name: Create GitHub Release
