@@ -383,6 +383,169 @@ class ContainerTest:
         assert service.dep.source == "mocked"
 
 
+class RegisterInstanceTest:
+    """Verify ``register_instance`` for binding pre-built objects to types."""
+
+    def test_register_instance_returns_registered_object(self):
+        class Service:
+            pass
+
+        instance = Service()
+        container = Container()
+        container.register_instance(Service, instance)
+
+        assert container.provide(Service) is instance
+
+    def test_same_instance_for_multiple_ports(self):
+        class PortA:
+            pass
+
+        class PortB:
+            pass
+
+        class PortC:
+            pass
+
+        class Impl(PortA, PortB, PortC):
+            pass
+
+        instance = Impl()
+        container = Container()
+        container.register_instance(PortA, instance)
+        container.register_instance(PortB, instance)
+        container.register_instance(PortC, instance)
+
+        assert container.provide(PortA) is instance
+        assert container.provide(PortB) is instance
+        assert container.provide(PortC) is instance
+
+    def test_registered_instance_satisfies_constructor_dependency(self):
+        class Port:
+            pass
+
+        class Impl(Port):
+            pass
+
+        class Consumer:
+            def __init__(self, port: Port) -> None:
+                self.port = port
+
+        instance = Impl()
+        container = Container()
+        container.register_instance(Port, instance)
+
+        consumer = container.provide(Consumer)
+
+        assert consumer.port is instance
+
+    def test_registered_instance_beats_factory(self):
+        class Factory:
+            def get_database(self) -> Database:
+                return Database("from-factory")
+
+        replacement = Database("from-register-instance")
+        container = Container(Factory())
+        container.register_instance(Database, replacement)
+
+        assert container.provide(Database) is replacement
+
+    def test_registered_instance_beats_alias(self):
+        class Port:
+            pass
+
+        class AliasedImpl(Port):
+            pass
+
+        class Direct(Port):
+            pass
+
+        instance = Direct()
+        container = Container()
+        container.alias(Port, AliasedImpl)
+        container.register_instance(Port, instance)
+
+        assert container.provide(Port) is instance
+
+    def test_use_mock_overrides_registered_instance(self):
+        class Service:
+            pass
+
+        registered = Service()
+        mock = Service()
+        container = Container()
+        container.register_instance(Service, registered)
+        container.use_mock(Service, mock)
+
+        assert container.provide(Service) is mock
+
+    def test_override_context_replaces_registered_instance(self):
+        class Service:
+            pass
+
+        registered = Service()
+        mock = Service()
+        container = Container()
+        container.register_instance(Service, registered)
+
+        with container.override(Service, mock):
+            assert container.provide(Service) is mock
+
+        assert container.provide(Service) is registered
+
+    def test_registered_instance_visible_across_threads(self):
+        from concurrent.futures import ThreadPoolExecutor
+
+        class Service:
+            pass
+
+        instance = Service()
+        container = Container()
+        container.register_instance(Service, instance)
+
+        def provide_in_thread() -> Service:
+            return container.provide(Service)
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            from_other_thread = pool.submit(provide_in_thread).result()
+
+        assert from_other_thread is instance
+
+    def test_registered_instance_visible_inside_overrides_block(self):
+        class Shared:
+            pass
+
+        class Other:
+            pass
+
+        class Consumer:
+            def __init__(self, shared: Shared, other: Other) -> None:
+                self.shared = shared
+                self.other = other
+
+        shared = Shared()
+        replacement_other = Other()
+        container = Container()
+        container.register_instance(Shared, shared)
+
+        with container.override(Other, replacement_other):
+            consumer = container.provide(Consumer)
+
+        assert consumer.shared is shared
+        assert consumer.other is replacement_other
+
+    def test_re_registering_replaces_previous_instance(self):
+        class Service:
+            pass
+
+        first = Service()
+        second = Service()
+        container = Container()
+        container.register_instance(Service, first)
+        container.register_instance(Service, second)
+
+        assert container.provide(Service) is second
+
+
 class ThreadLocalSingletonWithMocksTest:
     """Verify that thread_local_singleton factories work correctly with
     both ``override`` and ``use_mock`` APIs."""

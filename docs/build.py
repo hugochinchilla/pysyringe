@@ -35,6 +35,7 @@ NAV_SECTIONS = [
             "container-aware-factories",
             "inference",
             "aliases",
+            "register-instance",
         ],
     ),
     ("Dependency Injection", ["inject-decorator", "provide"]),
