@@ -14,7 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   abstract ports and its constructor takes runtime values (settings, secrets)
   that aren't container-resolvable. Registrations are process-wide, shared
   across threads, and take precedence over `alias()` and factory methods, while
-  still being replaceable by `override()` and `use_mock()` in tests.
+  still being replaceable by `override()` in tests.
+
+### Removed
+
+- **Breaking:** `Container.use_mock()` and `Container.clear_mocks()`. The
+  manual mock API was a footgun: forgetting `clear_mocks()` (or skipping
+  teardown when a test failed before reaching it) silently leaked state into
+  other tests. Use the `override()` / `overrides()` context managers instead —
+  they always clean up, even on exceptions. See `MIGRATION.md` for the
+  rewrite pattern, including a pytest fixture that yields inside the `with`
+  block for shared setup.
 
 ## [2.0.0]
 

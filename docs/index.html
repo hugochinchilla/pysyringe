@@ -61,9 +61,9 @@
     </div>
     <div class="nav-section">
       <div class="nav-section-title">Testing</div>
-      <a href="#mocks">Mocks &amp; Overrides</a>
+      <a href="#mocks">Overrides</a>
       <a href="#override-context">Override Context Manager</a>
-      <a href="#legacy-mocks">Legacy Mock API</a>
+      <a href="#override-fixtures">Shared Setup with Fixtures</a>
     </div>
     <div class="nav-section">
       <div class="nav-section-title">Advanced</div>
@@ -175,7 +175,7 @@
 <h2 id="resolution" class="section-anchor">How Resolution Works</h2>
 <p>When you call <code>container.provide(SomeType)</code>, the container follows a strict resolution order:</p>
 <ol>
-<li><strong>Mock store</strong> &mdash; Check the current thread&rsquo;s mock store. If a mock was registered via <code>use_mock()</code> or <code>override()</code>, return it.</li>
+<li><strong>Active overrides</strong> &mdash; Check the current thread&rsquo;s override store. If <code>override()</code> or <code>overrides()</code> has replaced the type within an active <code>with</code> block, return the replacement.</li>
 <li><strong>Registered instance</strong> &mdash; If a pre-built object was registered for the type via <code>register_instance()</code>, return it.</li>
 <li><strong>Alias lookup</strong> &mdash; If the type was registered with <code>alias()</code>, recursively resolve the mapped implementation type.</li>
 <li><strong>Factory methods</strong> &mdash; Look up a factory method by return-type annotation. If found, call it and return the result. If the factory method accepts a <code>Container</code> parameter, the container passes itself.</li>
@@ -253,7 +253,7 @@
 <p>This is especially useful when:</p>
 <ul>
 <li>A factory needs dependencies that are themselves resolvable by the container (via inference or other factories).</li>
-<li>You want factory-created objects to respect active <code>override()</code> or <code>use_mock()</code> replacements during tests.</li>
+<li>You want factory-created objects to respect active <code>override()</code> replacements during tests.</li>
 <li>You need to combine factory logic with the container&rsquo;s recursive resolution.</li>
 </ul>
 <p>Factory methods without a <code>Container</code> parameter continue to work exactly as before&mdash;called with no arguments.</p>
@@ -368,7 +368,7 @@
 <p>Registrations are process-wide and shared across threads. They take precedence over <code>alias()</code> and factory methods.</p>
 <div class="callout note">
 <strong>Note</strong>
-<p><code>override()</code> and <code>use_mock()</code> still beat <code>register_instance()</code>, so tests can replace a registered production object the same way they replace anything else.</p>
+<p><code>override()</code> still beats <code>register_instance()</code>, so tests can replace a registered production object the same way they replace anything else.</p>
 </div>
 <h2 id="inject-decorator" class="section-anchor">The @inject Decorator and Provide[T]</h2>
 <p>The <code>@container.inject</code> decorator is the primary way to wire dependencies into your application&rsquo;s entry points (HTTP handlers, CLI commands, message consumers, etc.).</p>
@@ -464,8 +464,8 @@
 </tr>
 </tbody>
 </table>
-<h2 id="mocks" class="section-anchor">Mocks &amp; Overrides</h2>
-<p>PySyringe makes it easy to replace dependencies in tests. The recommended approach uses the <code>override()</code> context manager.</p>
+<h2 id="mocks" class="section-anchor">Overrides</h2>
+<p>PySyringe makes it easy to replace dependencies in tests via the <code>override()</code> / <code>overrides()</code> context managers. Cleanup is automatic — even if the test raises — so state never leaks between tests.</p>
 <h3 id="override-context" class="section-anchor">Override Context Manager</h3>
 <p>The <code>override()</code> and <code>overrides()</code> context managers temporarily replace dependencies for the duration of a <code>with</code> block. When the block exits, the original behavior is automatically restored.</p>
 <h4 id="single-dependency">Single dependency</h4>
@@ -489,25 +489,22 @@
         <span class="n">service</span><span class="o">.</span><span class="n">signup</span><span class="p">(</span><span class="s2">&quot;Jane&quot;</span><span class="p">,</span> <span class="s2">&quot;jane@example.org&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<div class="callout note">
-<strong>Recommended</strong>
-<p>Prefer <code>override()</code> / <code>overrides()</code> over the legacy <code>use_mock()</code> API. Context managers guarantee cleanup, preventing mock leakage between tests.</p>
-</div>
-<h3 id="legacy-mocks" class="section-anchor">Legacy Mock API</h3>
-<p>The <code>use_mock()</code> and <code>clear_mocks()</code> methods provide a manual mock API. You are responsible for clearing mocks after each test.</p>
+<h3 id="override-fixtures" class="section-anchor">Shared Setup with Fixtures</h3>
+<p>For test suites that share dependency replacements, wrap <code>override()</code> in a pytest fixture that yields from inside the <code>with</code> block. The context manager handles cleanup, so no <code>autouse</code> teardown is needed and exceptions can&rsquo;t leak state.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
 
 
-<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">autouse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">clear_container_mocks</span><span class="p">():</span>
-    <span class="k">yield</span>
-    <span class="n">container</span><span class="o">.</span><span class="n">clear_mocks</span><span class="p">()</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">user_repository</span><span class="p">():</span>
+    <span class="n">repo</span> <span class="o">=</span> <span class="n">InMemoryUserRepository</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">container</span><span class="o">.</span><span class="n">override</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">repo</span><span class="p">):</span>
+        <span class="k">yield</span> <span class="n">repo</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">test_user_signup</span><span class="p">():</span>
-    <span class="n">container</span><span class="o">.</span><span class="n">use_mock</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span><span class="p">())</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_user_signup</span><span class="p">(</span><span class="n">user_repository</span><span class="p">):</span>
     <span class="n">service</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">provide</span><span class="p">(</span><span class="n">SignupUserService</span><span class="p">)</span>
     <span class="n">service</span><span class="o">.</span><span class="n">signup</span><span class="p">(</span><span class="s2">&quot;Jane&quot;</span><span class="p">,</span> <span class="s2">&quot;jane@example.org&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">user_repository</span><span class="o">.</span><span class="n">get_by_email</span><span class="p">(</span><span class="s2">&quot;jane@example.org&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 <h2 id="thread-safety" class="section-anchor">Thread Safety</h2>
@@ -537,14 +534,9 @@
 <td>Indexed at container initialization. Shared across threads.</td>
 </tr>
 <tr>
-<td><code>use_mock()</code></td>
+<td><code>override()</code> / <code>overrides()</code></td>
 <td>Per-thread</td>
 <td>Stored in thread-local storage. No cross-thread leakage.</td>
-</tr>
-<tr>
-<td><code>clear_mocks()</code></td>
-<td>Per-thread</td>
-<td>Clears only the current thread&rsquo;s mocks.</td>
 </tr>
 <tr>
 <td><code>singleton()</code></td>
@@ -560,9 +552,8 @@
 </table>
 <p>Implications:</p>
 <ul>
-<li>Calling <code>use_mock(SomeType, mock)</code> in one thread does not affect other threads.</li>
-<li>Calling <code>clear_mocks()</code> clears only the current thread&rsquo;s mocks.</li>
-<li>To share behavior globally, use <code>alias()</code> or a factory method instead of mocks.</li>
+<li>A <code>with container.override(SomeType, mock)</code> block in one thread does not affect other threads.</li>
+<li>To share behavior globally, use <code>alias()</code> or a factory method.</li>
 </ul>
 <h2 id="resolution-cache" class="section-anchor">Resolution Cache</h2>
 <p>PySyringe includes a lightweight cache to speed up dependency resolution without affecting instance semantics.</p>
@@ -669,7 +660,7 @@
 
 <h3 id="containerregister_instancecls-instance" class="section-anchor">container.register_instance(cls, instance)</h3>
 <p><code class="api-signature">register_instance(cls: type[T], instance: T) -&gt; None</code></p>
-<p>Bind a pre-built object as the implementation for a type. Subsequent calls to <code>provide(cls)</code> return the registered object as-is. The same instance can be registered for several types to share one concrete object across multiple ports. Registrations are process-wide (not thread-local) and take precedence over <code>alias()</code> and factory methods, but can still be replaced by <code>override()</code> or <code>use_mock()</code>.</p>
+<p>Bind a pre-built object as the implementation for a type. Subsequent calls to <code>provide(cls)</code> return the registered object as-is. The same instance can be registered for several types to share one concrete object across multiple ports. Registrations are process-wide (not thread-local) and take precedence over <code>alias()</code> and factory methods, but can still be replaced by <code>override()</code>.</p>
 <table class="param-table">
 <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
 <tbody>
@@ -699,20 +690,6 @@
 </tbody>
 </table>
 
-<h3 id="containeruse_mockcls-mock" class="section-anchor">container.use_mock(cls, mock)</h3>
-<p><code class="api-signature">use_mock(cls: type[T], mock: T) -&gt; None</code></p>
-<p>Set a mock for a type in the current thread. Thread-local: does not affect other threads. Prefer <code>override()</code> for new code.</p>
-<table class="param-table">
-<thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
-<tbody>
-<tr><td>cls</td><td>type[T]</td><td>The type to mock.</td></tr>
-<tr><td>mock</td><td>T</td><td>The mock instance.</td></tr>
-</tbody>
-</table>
-
-<h3 id="containerclear_mocks" class="section-anchor">container.clear_mocks()</h3>
-<p><code class="api-signature">clear_mocks() -&gt; None</code></p>
-<p>Clear all mocks for the current thread. Only affects the calling thread.</p>
 <h2 id="api-singleton" class="section-anchor">Singleton API</h2>
 <h3 id="singletontype_-args-kwargs" class="section-anchor">singleton(type_, <em>args, </em>*kwargs)</h3>
 <p><code class="api-signature">singleton(type_: type[T], <em>type_args, </em>*type_kwargs) -&gt; T</code></p>

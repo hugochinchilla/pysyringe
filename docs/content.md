@@ -66,7 +66,7 @@ The optional `factory` argument is any object whose public methods serve as fact
 
 When you call `container.provide(SomeType)`, the container follows a strict resolution order:
 
-1. **Mock store** --- Check the current thread's mock store. If a mock was registered via `use_mock()` or `override()`, return it.
+1. **Active overrides** --- Check the current thread's override store. If `override()` or `overrides()` has replaced the type within an active `with` block, return the replacement.
 2. **Registered instance** --- If a pre-built object was registered for the type via `register_instance()`, return it.
 3. **Alias lookup** --- If the type was registered with `alias()`, recursively resolve the mapped implementation type.
 4. **Factory methods** --- Look up a factory method by return-type annotation. If found, call it and return the result. If the factory method accepts a `Container` parameter, the container passes itself.
@@ -150,7 +150,7 @@ mailer = container.provide(EmailSender)  # Factory receives the container
 This is especially useful when:
 
 - A factory needs dependencies that are themselves resolvable by the container (via inference or other factories).
-- You want factory-created objects to respect active `override()` or `use_mock()` replacements during tests.
+- You want factory-created objects to respect active `override()` replacements during tests.
 - You need to combine factory logic with the container's recursive resolution.
 
 Factory methods without a `Container` parameter continue to work exactly as before---called with no arguments.
@@ -280,7 +280,7 @@ Both `provide(Cache)` and `provide(RateLimiter)` now return the same `RedisClien
 Registrations are process-wide and shared across threads. They take precedence over `alias()` and factory methods.
 
 !!! note "Note"
-    `override()` and `use_mock()` still beat `register_instance()`, so tests can replace a registered production object the same way they replace anything else.
+    `override()` still beats `register_instance()`, so tests can replace a registered production object the same way they replace anything else.
 
 ## The @inject Decorator and Provide[T] {#inject-decorator}
 
@@ -376,9 +376,9 @@ Best for: database sessions, request-scoped state, and other resources that are 
 | `singleton()` | Global | Double-checked locking | Connection pools, HTTP clients |
 | `thread_local_singleton()` | Per-thread | Thread-local storage | Database sessions, request state |
 
-## Mocks & Overrides {#mocks}
+## Overrides {#mocks}
 
-PySyringe makes it easy to replace dependencies in tests. The recommended approach uses the `override()` context manager.
+PySyringe makes it easy to replace dependencies in tests via the `override()` / `overrides()` context managers. Cleanup is automatic — even if the test raises — so state never leaks between tests.
 
 ### Override Context Manager {#override-context}
 
@@ -409,27 +409,25 @@ def test_with_multiple_overrides():
         service.signup("Jane", "jane@example.org")
 ```
 
-!!! note "Recommended"
-    Prefer `override()` / `overrides()` over the legacy `use_mock()` API. Context managers guarantee cleanup, preventing mock leakage between tests.
+### Shared Setup with Fixtures {#override-fixtures}
 
-### Legacy Mock API {#legacy-mocks}
-
-The `use_mock()` and `clear_mocks()` methods provide a manual mock API. You are responsible for clearing mocks after each test.
+For test suites that share dependency replacements, wrap `override()` in a pytest fixture that yields from inside the `with` block. The context manager handles cleanup, so no `autouse` teardown is needed and exceptions can't leak state.
 
 ```python
 import pytest
 
 
-@pytest.fixture(autouse=True)
-def clear_container_mocks():
-    yield
-    container.clear_mocks()
+@pytest.fixture
+def user_repository():
+    repo = InMemoryUserRepository()
+    with container.override(UserRepository, repo):
+        yield repo
 
 
-def test_user_signup():
-    container.use_mock(UserRepository, InMemoryUserRepository())
+def test_user_signup(user_repository):
     service = container.provide(SignupUserService)
     service.signup("Jane", "jane@example.org")
+    assert user_repository.get_by_email("jane@example.org")
 ```
 
 ## Thread Safety {#thread-safety}
@@ -441,16 +439,14 @@ PySyringe is designed with thread safety in mind:
 | `alias()` | Global | Shared across all threads. Configure at startup. |
 | `register_instance()` | Global | Shared across all threads. Configure at startup. |
 | Factory methods | Global | Indexed at container initialization. Shared across threads. |
-| `use_mock()` | Per-thread | Stored in thread-local storage. No cross-thread leakage. |
-| `clear_mocks()` | Per-thread | Clears only the current thread's mocks. |
+| `override()` / `overrides()` | Per-thread | Stored in thread-local storage. No cross-thread leakage. |
 | `singleton()` | Global | Thread-safe creation via double-checked locking. |
 | `thread_local_singleton()` | Per-thread | One instance per thread via `threading.local()`. |
 
 Implications:
 
-- Calling `use_mock(SomeType, mock)` in one thread does not affect other threads.
-- Calling `clear_mocks()` clears only the current thread's mocks.
-- To share behavior globally, use `alias()` or a factory method instead of mocks.
+- A `with container.override(SomeType, mock)` block in one thread does not affect other threads.
+- To share behavior globally, use `alias()` or a factory method.
 
 ## Resolution Cache {#resolution-cache}
 
@@ -595,7 +591,7 @@ Map an interface type to a concrete implementation. When the interface is reques
 
 <code class="api-signature">register_instance(cls: type[T], instance: T) -> None</code>
 
-Bind a pre-built object as the implementation for a type. Subsequent calls to `provide(cls)` return the registered object as-is. The same instance can be registered for several types to share one concrete object across multiple ports. Registrations are process-wide (not thread-local) and take precedence over `alias()` and factory methods, but can still be replaced by `override()` or `use_mock()`.
+Bind a pre-built object as the implementation for a type. Subsequent calls to `provide(cls)` return the registered object as-is. The same instance can be registered for several types to share one concrete object across multiple ports. Registrations are process-wide (not thread-local) and take precedence over `alias()` and factory methods, but can still be replaced by `override()`.
 
 <table class="param-table">
 <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
@@ -631,26 +627,6 @@ Context manager that temporarily replaces multiple dependencies at once.
 <tr><td>override_map</td><td>dict[type, object]</td><td>A mapping of types to their replacement instances.</td></tr>
 </tbody>
 </table>
-
-### container.use_mock(cls, mock)
-
-<code class="api-signature">use_mock(cls: type[T], mock: T) -> None</code>
-
-Set a mock for a type in the current thread. Thread-local: does not affect other threads. Prefer `override()` for new code.
-
-<table class="param-table">
-<thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
-<tbody>
-<tr><td>cls</td><td>type[T]</td><td>The type to mock.</td></tr>
-<tr><td>mock</td><td>T</td><td>The mock instance.</td></tr>
-</tbody>
-</table>
-
-### container.clear_mocks()
-
-<code class="api-signature">clear_mocks() -> None</code>
-
-Clear all mocks for the current thread. Only affects the calling thread.
 
 ## Singleton API {#api-singleton}
 

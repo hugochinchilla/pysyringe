@@ -126,21 +126,19 @@ class DjangoIntegrationTest:
         data = json.loads(response.content)
         assert data["name"] == "Bob"
 
-    def test_mock_replaces_injected_service(self) -> None:
+    def test_override_replaces_injected_greeting_service(self) -> None:
         container = Container()
 
         class StubGreeting(GreetingService):
             def greet(self, name: str) -> str:
                 return f"Howdy, {name}!"
 
-        container.use_mock(GreetingService, StubGreeting())
-
-        view = container.inject(greeting_view)
-        request = RequestFactory().get("/greet", {"name": "Partner"})
-        response = view(request)
+        with container.override(GreetingService, StubGreeting()):
+            view = container.inject(greeting_view)
+            request = RequestFactory().get("/greet", {"name": "Partner"})
+            response = view(request)
 
         assert response.content == b"Howdy, Partner!"
-        container.clear_mocks()
 
     def test_view_with_factory(self) -> None:
         class Config:
