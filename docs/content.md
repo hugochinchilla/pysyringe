@@ -280,7 +280,7 @@ Both `provide(Cache)` and `provide(RateLimiter)` now return the same `RedisClien
 Registrations are process-wide and shared across threads. They take precedence over `alias()` and factory methods.
 
 !!! note "Note"
-    `override()` and `use_mock()` still beat `register_instance()`, so tests can replace a registered production object the same way they replace anything else.
+    `override()` still beats `register_instance()`, so tests can replace a registered production object the same way they replace anything else.
 
 ## The @inject Decorator and Provide[T] {#inject-decorator}
 
@@ -591,7 +591,7 @@ Map an interface type to a concrete implementation. When the interface is reques
 
 <code class="api-signature">register_instance(cls: type[T], instance: T) -> None</code>
 
-Bind a pre-built object as the implementation for a type. Subsequent calls to `provide(cls)` return the registered object as-is. The same instance can be registered for several types to share one concrete object across multiple ports. Registrations are process-wide (not thread-local) and take precedence over `alias()` and factory methods, but can still be replaced by `override()` or `use_mock()`.
+Bind a pre-built object as the implementation for a type. Subsequent calls to `provide(cls)` return the registered object as-is. The same instance can be registered for several types to share one concrete object across multiple ports. Registrations are process-wide (not thread-local) and take precedence over `alias()` and factory methods, but can still be replaced by `override()`.
 
 <table class="param-table">
 <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>

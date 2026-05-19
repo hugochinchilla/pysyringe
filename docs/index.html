@@ -368,7 +368,7 @@
 <p>Registrations are process-wide and shared across threads. They take precedence over <code>alias()</code> and factory methods.</p>
 <div class="callout note">
 <strong>Note</strong>
-<p><code>override()</code> and <code>use_mock()</code> still beat <code>register_instance()</code>, so tests can replace a registered production object the same way they replace anything else.</p>
+<p><code>override()</code> still beats <code>register_instance()</code>, so tests can replace a registered production object the same way they replace anything else.</p>
 </div>
 <h2 id="inject-decorator" class="section-anchor">The @inject Decorator and Provide[T]</h2>
 <p>The <code>@container.inject</code> decorator is the primary way to wire dependencies into your application&rsquo;s entry points (HTTP handlers, CLI commands, message consumers, etc.).</p>
@@ -660,7 +660,7 @@
 
 <h3 id="containerregister_instancecls-instance" class="section-anchor">container.register_instance(cls, instance)</h3>
 <p><code class="api-signature">register_instance(cls: type[T], instance: T) -&gt; None</code></p>
-<p>Bind a pre-built object as the implementation for a type. Subsequent calls to <code>provide(cls)</code> return the registered object as-is. The same instance can be registered for several types to share one concrete object across multiple ports. Registrations are process-wide (not thread-local) and take precedence over <code>alias()</code> and factory methods, but can still be replaced by <code>override()</code> or <code>use_mock()</code>.</p>
+<p>Bind a pre-built object as the implementation for a type. Subsequent calls to <code>provide(cls)</code> return the registered object as-is. The same instance can be registered for several types to share one concrete object across multiple ports. Registrations are process-wide (not thread-local) and take precedence over <code>alias()</code> and factory methods, but can still be replaced by <code>override()</code>.</p>
 <table class="param-table">
 <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
 <tbody>

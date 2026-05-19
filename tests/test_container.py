@@ -1018,7 +1018,7 @@ class RecursiveResolutionTest:
         with pytest.raises(RecursiveResolutionError):
             container.provide(Service)
 
-        # After the error, using a mock should work fine
+        # After the error, using an override should work fine
         mock_service = Service()
-        container.use_mock(Service, mock_service)
-        assert container.provide(Service) is mock_service
+        with container.override(Service, mock_service):
+            assert container.provide(Service) is mock_service

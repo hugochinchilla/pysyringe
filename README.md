@@ -104,7 +104,7 @@ container.register_instance(Cache, client)
 container.register_instance(RateLimiter, client)
 ```
 
-Registrations are process-wide and shared across threads. They take precedence over `alias()` and factory methods, but `override()` and `use_mock()` can still replace them in tests.
+Registrations are process-wide and shared across threads. They take precedence over `alias()` and factory methods, but `override()` can still replace them in tests.
 
 ### 4) Inject at the call site
 
