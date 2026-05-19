@@ -52,9 +52,17 @@ jobs:
             sed -i "/^\[Unreleased\]:/a [${VERSION}]: ${REPO_URL}/compare/${PREV_TAG}...${TAG}" CHANGELOG.md
           fi
 
-      - name: Build wheel and sdist
+      - name: Verify tag matches __version__
         env:
-          SETUPTOOLS_SCM_PRETEND_VERSION: ${{ steps.version.outputs.version }}
+          TAG_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          FILE_VERSION=$(uvx hatch version)
+          if [ "$FILE_VERSION" != "$TAG_VERSION" ]; then
+            echo "Tag version ($TAG_VERSION) does not match pysyringe/__init__.py ($FILE_VERSION)" >&2
+            exit 1
+          fi
+
+      - name: Build wheel and sdist
         run: uv build
 
       - name: Create GitHub Release
