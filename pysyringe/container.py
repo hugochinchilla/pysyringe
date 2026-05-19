@@ -99,6 +99,7 @@ class _Resolver:
         self.container: "Container | None" = None
         self.mock_store = ThreadLocalMockStore()
         self.aliases: dict = {}
+        self.instances: dict = {}
         self._resolution_chain: list[tuple[type, str, type]] = []
         self._factory_by_return_type: dict[type, Callable] = (
             {
@@ -118,6 +119,9 @@ class _Resolver:
         mocks = self.mock_store.get_mocks()
         if cls in mocks:
             return cast(T, mocks[cls])
+
+        if cls in self.instances:
+            return cast(T, self.instances[cls])
 
         if cls in self.aliases:
             return self.resolve(self.aliases[cls], default)
@@ -193,6 +197,7 @@ class Container:
         for cls, mock in self._resolver.mock_store.get_mocks().items():
             temp_resolver.mock_store.set_mock(cls, mock)
         temp_resolver.aliases = dict(self._resolver.aliases)
+        temp_resolver.instances = dict(self._resolver.instances)
         for class_type, implementation in override_map.items():
             temp_resolver.mock_store.set_mock(class_type, implementation)
         original_resolver = self._resolver
@@ -208,6 +213,22 @@ class Container:
 
     def alias(self, interface: type, implementation: type) -> None:
         self._resolver.aliases[interface] = implementation
+
+    def register_instance(self, cls: type[T], instance: T) -> None:
+        """Bind a pre-built object as the implementation for a type.
+
+        Use this when you need to construct an object yourself (e.g.
+        because its constructor takes runtime values that aren't
+        container-resolvable) and have the container return that exact
+        object whenever the given type is requested.  The same instance
+        can be registered for multiple types, which is the canonical way
+        to share one concrete object across several abstract ports.
+
+        Registrations are process-wide and shared across threads.  They
+        beat ``alias()`` and factory methods, but can be replaced for
+        the duration of a test via ``override()``.
+        """
+        self._resolver.instances[cls] = instance
 
 
 def _is_provide_marker(hint: object) -> bool:

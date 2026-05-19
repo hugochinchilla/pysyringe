@@ -67,9 +67,10 @@ The optional `factory` argument is any object whose public methods serve as fact
 When you call `container.provide(SomeType)`, the container follows a strict resolution order:
 
 1. **Override store** --- Check the current thread's override store. If a replacement was registered via `override()` / `overrides()`, return it.
-2. **Alias lookup** --- If the type was registered with `alias()`, recursively resolve the mapped implementation type.
-3. **Factory methods** --- Look up a factory method by return-type annotation. If found, call it and return the result. If the factory method accepts a `Container` parameter, the container passes itself.
-4. **Constructor inference** --- Inspect the type's constructor, recursively resolve each parameter by its type hint, and construct the instance.
+2. **Registered instance** --- If a pre-built object was registered for the type via `register_instance()`, return it.
+3. **Alias lookup** --- If the type was registered with `alias()`, recursively resolve the mapped implementation type.
+4. **Factory methods** --- Look up a factory method by return-type annotation. If found, call it and return the result. If the factory method accepts a `Container` parameter, the container passes itself.
+5. **Constructor inference** --- Inspect the type's constructor, recursively resolve each parameter by its type hint, and construct the instance.
 
 If none of these strategies succeed, an `UnknownDependencyError` is raised.
 
@@ -213,6 +214,73 @@ service = container.provide(NotificationService)
 ```
 
 The implementation is constructed via inference, so its dependencies are resolved recursively. You don't need a factory method for aliased types.
+
+## Registered Instances {#register-instance}
+
+`register_instance(port, instance)` binds a pre-built object to a type. When the type is requested, the container hands back the exact object you passed in --- no construction, no resolution.
+
+This is the right tool when:
+
+- You need to construct an object yourself because its constructor takes runtime values (settings, secrets, environment-dependent URLs) that aren't container-resolvable.
+- A single concrete object satisfies multiple abstract ports and you want all four ports to resolve to the same instance.
+
+#### Single port
+
+```python
+import os
+
+
+class AppConfig:
+    def __init__(self, database_url: str, debug: bool) -> None:
+        self.database_url = database_url
+        self.debug = debug
+
+
+config = AppConfig(
+    database_url=os.environ["DATABASE_URL"],
+    debug=os.environ.get("DEBUG") == "1",
+)
+
+container.register_instance(AppConfig, config)
+```
+
+#### Same instance for multiple ports
+
+```python
+import abc
+
+
+class Cache(abc.ABC):
+    @abc.abstractmethod
+    def get(self, key: str) -> str | None: ...
+
+
+class RateLimiter(abc.ABC):
+    @abc.abstractmethod
+    def allow(self, key: str) -> bool: ...
+
+
+class RedisClient(Cache, RateLimiter):
+    def __init__(self, *, url: str, max_connections: int) -> None:
+        self.url = url
+        self.max_connections = max_connections
+
+    def get(self, key: str) -> str | None: ...
+    def allow(self, key: str) -> bool: ...
+
+
+client = RedisClient(url=os.environ["REDIS_URL"], max_connections=20)
+
+container.register_instance(Cache, client)
+container.register_instance(RateLimiter, client)
+```
+
+Both `provide(Cache)` and `provide(RateLimiter)` now return the same `RedisClient` object.
+
+Registrations are process-wide and shared across threads. They take precedence over `alias()` and factory methods.
+
+!!! note "Note"
+    `override()` and `use_mock()` still beat `register_instance()`, so tests can replace a registered production object the same way they replace anything else.
 
 ## The @inject Decorator and Provide[T] {#inject-decorator}
 
@@ -369,6 +437,7 @@ PySyringe is designed with thread safety in mind:
 | Feature | Scope | Details |
 |---------|-------|---------|
 | `alias()` | Global | Shared across all threads. Configure at startup. |
+| `register_instance()` | Global | Shared across all threads. Configure at startup. |
 | Factory methods | Global | Indexed at container initialization. Shared across threads. |
 | `override()` / `overrides()` | Per-thread | Replacements are stored in thread-local storage. No cross-thread leakage. |
 | `singleton()` | Global | Thread-safe creation via double-checked locking. |
@@ -515,6 +584,20 @@ Map an interface type to a concrete implementation. When the interface is reques
 <tbody>
 <tr><td>interface</td><td>type</td><td>The abstract type or interface.</td></tr>
 <tr><td>implementation</td><td>type</td><td>The concrete type to use.</td></tr>
+</tbody>
+</table>
+
+### container.register_instance(cls, instance)
+
+<code class="api-signature">register_instance(cls: type[T], instance: T) -> None</code>
+
+Bind a pre-built object as the implementation for a type. Subsequent calls to `provide(cls)` return the registered object as-is. The same instance can be registered for several types to share one concrete object across multiple ports. Registrations are process-wide (not thread-local) and take precedence over `alias()` and factory methods, but can still be replaced by `override()` or `use_mock()`.
+
+<table class="param-table">
+<thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>cls</td><td>type[T]</td><td>The type (typically an abstract port) to bind.</td></tr>
+<tr><td>instance</td><td>T</td><td>The pre-built object to return when this type is requested.</td></tr>
 </tbody>
 </table>
 
