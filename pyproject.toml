@@ -153,24 +153,11 @@ skip_empty = true
 fail_under = 95
 
 [build-system]
-requires = ["hatchling>=1.24.2", "hatch-vcs>=0.4"]
+requires = ["hatchling>=1.24.2"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
-source = "vcs"
-
-[tool.hatch.build.hooks.vcs]
-# Accept tags like v1.2.3 and strip leading 'v'
-tag-pattern = "^v(?P<version>.*)$"
-version-file = "pysyringe/__init__.py"
-template = """\
-__version__ = \"{version}\"
-
-from pysyringe.container import Container, Provide
-
-__all__ = [\"Container\", \"Provide\"]
-"""
-write = true
+path = "pysyringe/__init__.py"
 
 [tool.pytest.ini_options]
 testpaths = "tests"
