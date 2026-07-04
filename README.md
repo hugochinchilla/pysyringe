@@ -131,6 +131,8 @@ def get_now(request: HttpRequest, calendar: Provide[CalendarInterface]) -> HttpR
 
 `request` is provided by Django as usual. `calendar` is injected by the container. The container only touches what you explicitly mark.
 
+Declare `Provide[T]` parameters last, after all caller-supplied parameters (as in the example above). Injected values are passed by keyword, so a caller's positional argument would otherwise land in an injected parameter's slot and fail with `TypeError`.
+
 ### 5) Replace dependencies in tests
 
 Use the `override()` context manager (or `overrides()` for multiple at once)
@@ -232,7 +234,9 @@ class Factory:
         return thread_local_singleton(DatabaseSession, "postgresql://localhost:5432/mydb")
 ```
 
-Each thread gets its own `DatabaseSession` instance. Within the same thread, repeated calls return the same object. This is useful for resources that are not thread-safe, such as database sessions or request-scoped state.
+Each thread gets its own `DatabaseSession` instance. Within the same thread, repeated calls return the same object. This is useful for resources that are not thread-safe, such as database sessions.
+
+Note that instances are per-thread, not per-request: servers reuse worker threads, so an instance created while handling one request survives into the next request served by the same thread. Reset any per-request state yourself.
 
 #### Notes
 

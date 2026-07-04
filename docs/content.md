@@ -302,6 +302,8 @@ How it works:
 3. All other parameters are left untouched for the caller to provide.
 4. The function's `__signature__` is updated to reflect only the remaining (non-injected) parameters.
 
+Declare `Provide[T]` parameters last, after all caller-supplied parameters (as in the example above). Injected values are passed by keyword, so a caller's positional argument would otherwise land in an injected parameter's slot and fail with `TypeError`.
+
 In the example above, `user_service` is injected by the container while `request` is provided by the framework as usual. This makes `@container.inject` safe to use with any framework---Django, Flask, Dramatiq, etc.---because the container never interferes with framework-controlled parameters.
 
 !!! note "Note"
@@ -368,12 +370,12 @@ class Factory:
         return thread_local_singleton(DatabaseSession, "postgresql://localhost/mydb")
 ```
 
-Best for: database sessions, request-scoped state, and other resources that are not thread-safe and should not be shared across threads.
+Best for: database sessions and other resources that are not thread-safe and should not be shared across threads. Note that instances are per-thread, not per-request: servers reuse worker threads, so an instance survives into the next request served by the same thread — reset any per-request state yourself.
 
 | Helper | Scope | Thread Safety | Use Case |
 |--------|-------|---------------|----------|
 | `singleton()` | Global | Lock-guarded creation | Connection pools, HTTP clients |
-| `thread_local_singleton()` | Per-thread | Thread-local storage | Database sessions, request state |
+| `thread_local_singleton()` | Per-thread | Thread-local storage | Database sessions, per-thread state |
 
 ## Overrides {#mocks}
 

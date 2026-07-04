@@ -194,11 +194,11 @@ class _Resolver:
                 return self.resolve(self.aliases[cls], default)
 
             instance = self.__make_from_factory(cls)
-            if instance is not None:
+            if not isinstance(instance, _Unresolved):
                 return instance
 
             instance = self.__make_from_inference(cls)
-            if instance is not None:
+            if not isinstance(instance, _Unresolved):
                 return instance
 
             return default
@@ -206,10 +206,13 @@ class _Resolver:
             self._resolving_stack.pop()
             self._resolving.discard(cls)
 
-    def __make_from_factory(self, cls: type[T]) -> T | None:
+    def __make_from_factory(self, cls: type[T]) -> T | _Unresolved:
+        # The _unresolved sentinel (not None) means "no factory for this
+        # type": a factory that returns None must surface that None instead
+        # of silently falling through to inference.
         entry = self._factory_by_return_type.get(cls)
         if entry is None:
-            return None
+            return _unresolved
         factory, wants_container = entry
         if self.container is not None and wants_container:
             return cast("T", factory(self.container))
@@ -229,12 +232,11 @@ class _Resolver:
                 methods.append(getattr(self.factory, name))
         return methods
 
-    def __make_from_inference(self, cls: type[T]) -> T | None:
+    def __make_from_inference(self, cls: type[T]) -> T | _Unresolved:
         # Builtins (str, int, list, ...) are all zero-arg constructible, but
         # "provide me a str" is always a wiring mistake — never infer them.
         if getattr(cls, "__module__", None) == "builtins":
-            return None
-        args = ()
+            return _unresolved
         kwargs = {}
         for arg_name, arg_type, default in _TypeHelper.get_constructor_kwargs(cls):
             self._resolution_chain.append((cls, arg_name, arg_type))
@@ -248,7 +250,7 @@ class _Resolver:
                 self._resolution_chain.pop()
             kwargs[arg_name] = resolved
 
-        return cls(*args, **kwargs)
+        return cls(**kwargs)
 
 
 class Container:
@@ -327,11 +329,23 @@ class _Injector:
     def inject(self, function: Callable) -> Callable:
         targets = self.__get_injection_targets(function)
 
-        @functools.wraps(function)
-        def partial_function(*args, **kwargs) -> Any:
-            # Caller-supplied keyword arguments win over container resolution.
-            pending = [t for t in targets if t[0] not in kwargs]
-            return function(*args, **kwargs, **self.__resolve_targets(pending))
+        if inspect.iscoroutinefunction(function):
+            # The wrapper must itself be a coroutine function: frameworks
+            # (e.g. Django's async view detection) rely on
+            # inspect.iscoroutinefunction() to decide how to call it.
+            @functools.wraps(function)
+            async def partial_function(*args, **kwargs) -> Any:
+                pending = [t for t in targets if t[0] not in kwargs]
+                resolved = self.__resolve_targets(pending)
+                return await function(*args, **kwargs, **resolved)
+
+        else:
+
+            @functools.wraps(function)
+            def partial_function(*args, **kwargs) -> Any:
+                # Caller-supplied keyword args win over container resolution.
+                pending = [t for t in targets if t[0] not in kwargs]
+                return function(*args, **kwargs, **self.__resolve_targets(pending))
 
         cast("Any", partial_function).__signature__ = self.__create_new_signature(
             function,

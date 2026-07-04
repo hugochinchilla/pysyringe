@@ -48,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   skipped like positional-only ones (#38).
 - `Container(factory)` no longer executes `@property` (or other descriptor)
   attributes on the factory while scanning for factory methods (#39).
+- `@container.inject` on an `async def` function now returns a coroutine
+  function, so frameworks that detect async handlers via
+  `inspect.iscoroutinefunction()` (e.g. Django's async view detection) call
+  it correctly instead of treating it as a sync function.
 
 ### Changed
 
@@ -63,6 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Builtin types (`str`, `int`, `list`, ...) are never constructed through
   inference; requesting one without a factory raises
   `UnknownDependencyError` as documented.
+- A factory method that returns `None` no longer falls through to
+  constructor inference; the `None` is returned to the caller, surfacing the
+  faulty factory instead of masking it with a silently inferred instance.
 - Updated the pre-commit `ruff` hook from v0.3.0 to v0.13.2 to match the
   locked dev dependency, and cleaned up the findings the old version
   missed; `pre-commit-hooks` bumped to v5.0.0 (#41).

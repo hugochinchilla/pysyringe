@@ -163,7 +163,7 @@ exclude_lines = [
 precision = 2
 skip_covered = true
 skip_empty = true
-fail_under = 95
+fail_under = 100
 
 [build-system]
 requires = ["hatchling>=1.24.2"]

@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import inspect
 from collections import deque
@@ -1234,6 +1235,18 @@ class FalsyInstanceTest:
 
         assert isinstance(container.provide(Empty), Empty)
 
+    def test_factory_returning_none_is_not_masked_by_inference(self):
+        class Widget:
+            pass
+
+        class Factory:
+            def get_widget(self) -> Widget:
+                return cast("Widget", None)  # buggy factory
+
+        container = Container(Factory())
+
+        assert container.provide(Widget) is None
+
 
 class InjectorRobustnessTest:
     def test_inject_supports_unhashable_dependencies(self):
@@ -1268,6 +1281,52 @@ class InjectorRobustnessTest:
 
         assert isinstance(result, Tracked)
         assert len(instantiations) == 1
+
+
+class AsyncInjectTest:
+    def test_injected_async_function_is_still_a_coroutine_function(self):
+        # Frameworks (e.g. Django's async view detection) use
+        # inspect.iscoroutinefunction() to decide how to call a view.
+        class Service:
+            pass
+
+        container = Container()
+
+        @container.inject
+        async def handler(service: Provide[Service]):
+            return service
+
+        assert inspect.iscoroutinefunction(handler)
+
+    def test_inject_resolves_dependencies_of_async_function(self):
+        class Service:
+            pass
+
+        container = Container()
+
+        @container.inject
+        async def handler(request: object, service: Provide[Service]):
+            return (request, service)
+
+        sentinel = object()
+        request, service = asyncio.run(handler(sentinel))
+
+        assert request is sentinel
+        assert isinstance(service, Service)
+
+    def test_caller_supplied_keyword_wins_over_injection_in_async_function(self):
+        class Service:
+            pass
+
+        container = Container()
+
+        @container.inject
+        async def handler(service: Provide[Service]):
+            return service
+
+        mine = Service()
+
+        assert asyncio.run(handler(service=mine)) is mine
 
 
 class FactoryValidationTest:
