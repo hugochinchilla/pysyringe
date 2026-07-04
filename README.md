@@ -35,6 +35,8 @@ pip install pysyringe
 
 ## Example
 
+### 1) Define a factory
+
 ```python
 from myapp.domain import EmailSenderInterface
 from myapp.infra import LoggingEmailSender, SmtpEmailSender
