@@ -1245,6 +1245,29 @@ class FactoryValidationTest:
         with pytest.raises(DuplicateFactoryMethodError, match="Database"):
             Container(Factory())
 
+    def test_factory_properties_are_not_evaluated_at_construction(self):
+        """Regression: Container(factory) used plain getattr over dir(),
+        which executed every @property on the factory at init time."""
+
+        evaluated = []
+
+        class Db:
+            pass
+
+        class Factory:
+            @property
+            def connection(self) -> str:
+                evaluated.append(True)
+                return "connected"
+
+            def get_db(self) -> Db:
+                return Db()
+
+        container = Container(Factory())
+
+        assert evaluated == []
+        assert isinstance(container.provide(Db), Db)
+
     def test_factory_methods_without_return_annotation_are_ignored(self):
         class Dep:
             pass

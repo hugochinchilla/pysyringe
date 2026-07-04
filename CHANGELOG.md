@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constructors with annotated `*args`/`**kwargs` no longer crash inference
   with `TypeError: unexpected keyword argument`; variadic parameters are now
   skipped like positional-only ones (#38).
+- `Container(factory)` no longer executes `@property` (or other descriptor)
+  attributes on the factory while scanning for factory methods (#39).
 
 ### Changed
 

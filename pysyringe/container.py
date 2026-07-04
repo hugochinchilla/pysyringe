@@ -213,10 +213,18 @@ class _Resolver:
         return cast(T, factory())
 
     def __build_factories(self) -> list[Callable]:
-        attrs = [
-            getattr(self.factory, x) for x in dir(self.factory) if not x.startswith("_")
-        ]
-        return [attr for attr in attrs if callable(attr)]
+        # getattr_static keeps properties/descriptors from firing as a side
+        # effect of building the container; only plain callables qualify.
+        methods = []
+        for name in dir(self.factory):
+            if name.startswith("_"):
+                continue
+            static = inspect.getattr_static(self.factory, name, None)
+            if isinstance(static, (staticmethod, classmethod)):
+                static = static.__func__
+            if callable(static):
+                methods.append(getattr(self.factory, name))
+        return methods
 
     def __make_from_inference(self, cls: type[T]) -> T | None:
         # Builtins (str, int, list, ...) are all zero-arg constructible, but
