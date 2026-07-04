@@ -35,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Alias cycles (`alias(A, B)` + `alias(B, A)`) now raise
   `RecursiveResolutionError` with the cycle instead of a raw
   `RecursionError` (#37).
+- Constructors with annotated `*args`/`**kwargs` no longer crash inference
+  with `TypeError: unexpected keyword argument`; variadic parameters are now
+  skipped like positional-only ones (#38).
 
 ### Changed
 

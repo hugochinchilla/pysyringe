@@ -413,7 +413,8 @@ class _TypeHelper:
 
     @classmethod
     def _is_resolvable(cls, p: inspect.Parameter) -> bool:
-        if p.kind is p.POSITIONAL_ONLY:
+        # *args/**kwargs cannot be passed by name; inference leaves them empty.
+        if p.kind in (p.POSITIONAL_ONLY, p.VAR_POSITIONAL, p.VAR_KEYWORD):
             return False
 
         if p.annotation is p.empty:

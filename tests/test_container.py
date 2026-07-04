@@ -303,6 +303,26 @@ class ContainerTest:
         with pytest.raises(TypeError):
             container.provide(Service)
 
+    def test_annotated_var_args_are_skipped_during_inference(self):
+        """Regression: annotated *args/**kwargs were treated as injectable
+        kwargs and passed by name, crashing the constructor."""
+
+        class Dep:
+            pass
+
+        class Service:
+            def __init__(self, dep: Dep, *extras: Dep, **options: int) -> None:
+                self.dep = dep
+                self.extras = extras
+                self.options = options
+
+        container = Container()
+        service = container.provide(Service)
+
+        assert isinstance(service.dep, Dep)
+        assert service.extras == ()
+        assert service.options == {}
+
     def test_inject_function_without_return_type(self):
         class Dependency:
             pass
