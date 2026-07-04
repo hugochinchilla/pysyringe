@@ -178,9 +178,6 @@ class _Resolver:
         if cls in self.instances:
             return cast(T, self.instances[cls])
 
-        if cls in self.aliases:
-            return self.resolve(self.aliases[cls], default)
-
         if cls in self._resolving:
             start = self._resolving_stack.index(cls)
             cycle = self._resolving_stack[start:] + [cls]
@@ -189,6 +186,11 @@ class _Resolver:
         self._resolving.add(cls)
         self._resolving_stack.append(cls)
         try:
+            # Alias hops happen inside the tracked section so alias cycles
+            # are reported as RecursiveResolutionError, not RecursionError.
+            if cls in self.aliases:
+                return self.resolve(self.aliases[cls], default)
+
             instance = self.__make_from_factory(cls)
             if instance is not None:
                 return instance

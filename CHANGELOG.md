@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Calling an injected function whose `Provide[T]` dependency cannot be
   resolved now raises `UnknownDependencyError` instead of a misleading
   `TypeError` about a missing positional argument (#36).
+- Alias cycles (`alias(A, B)` + `alias(B, A)`) now raise
+  `RecursiveResolutionError` with the cycle instead of a raw
+  `RecursionError` (#37).
 
 ### Changed
 

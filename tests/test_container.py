@@ -1041,6 +1041,23 @@ class RecursiveResolutionTest:
         assert "A" in message
         assert "B" in message
 
+    def test_alias_cycle_raises_recursive_resolution_error(self):
+        """Regression: alias cycles blew the Python stack with a raw
+        RecursionError because the alias hop skipped cycle tracking."""
+
+        class A:
+            pass
+
+        class B:
+            pass
+
+        container = Container()
+        container.alias(A, B)
+        container.alias(B, A)
+
+        with pytest.raises(RecursiveResolutionError):
+            container.provide(A)
+
     def test_resolving_set_is_cleaned_up_after_error(self):
         """After a RecursiveResolutionError, the type should be resolvable
         again if the recursion is fixed (e.g. via an override)."""
