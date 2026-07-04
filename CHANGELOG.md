@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Functions decorated with `@container.inject` no longer raise `TypeError`
   when the caller explicitly passes a value for a `Provide[T]` parameter as a
   keyword argument; the caller's value now wins over container resolution (#35).
+- Calling an injected function whose `Provide[T]` dependency cannot be
+  resolved now raises `UnknownDependencyError` instead of a misleading
+  `TypeError` about a missing positional argument (#36).
 
 ### Changed
 

@@ -840,6 +840,28 @@ class ProvideMarkerTest:
 
         assert injected("req", service=mine) is mine
 
+    def test_unresolvable_provide_param_raises_unknown_dependency_error(self):
+        """Regression: resolution failures were swallowed, so the call died
+        later with a TypeError about a parameter the advertised signature
+        claims does not exist."""
+
+        class NeedsString:
+            def __init__(self, value: str) -> None:
+                self.value = value
+
+        container = Container()
+
+        def handler(request: object, dep: Provide[NeedsString]):
+            return dep
+
+        injected = container.inject(handler)
+
+        with pytest.raises(UnknownDependencyError):
+            injected("req")
+
+        supplied = NeedsString("explicit")
+        assert injected("req", dep=supplied) is supplied
+
     def test_resolvable_unmarked_params_are_not_injected(self):
         class DepA:
             pass

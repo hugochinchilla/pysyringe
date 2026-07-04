@@ -359,12 +359,11 @@ class _Injector:
             depth = len(chain)
             try:
                 resolved = self._resolver.resolve(target_type)
-                if not isinstance(resolved, _Unresolved):
-                    injections[name] = resolved
-            except UnknownDependencyError:
-                pass
             finally:
                 del chain[depth:]
+            if isinstance(resolved, _Unresolved):
+                raise UnknownDependencyError(target_type)
+            injections[name] = resolved
         return injections
 
     def __create_new_signature(
