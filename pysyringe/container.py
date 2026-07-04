@@ -125,7 +125,9 @@ class _Resolver:
         self.aliases: dict = {}
         self.instances: dict = {}
         self._local = threading.local()
-        self._factory_by_return_type: dict[type, Callable] = (
+        # Maps return type -> (method, wants_container), with the container
+        # check precomputed: get_type_hints() is too slow for the hot path.
+        self._factory_by_return_type: dict[type, tuple[Callable, bool]] = (
             self.__map_factories_by_return_type() if self.factory is not None else {}
         )
 
@@ -153,8 +155,8 @@ class _Resolver:
     def get_resolution_chain(self) -> list[tuple[type, str, type]]:
         return self._resolution_chain
 
-    def __map_factories_by_return_type(self) -> dict[type, Callable]:
-        factories: dict[type, Callable] = {}
+    def __map_factories_by_return_type(self) -> dict[type, tuple[Callable, bool]]:
+        factories: dict[type, tuple[Callable, bool]] = {}
         for method in self.__build_factories():
             return_type = _TypeHelper.get_return_type(method)
             if return_type is inspect.Signature.empty:
@@ -162,10 +164,10 @@ class _Resolver:
             if return_type in factories:
                 raise DuplicateFactoryMethodError(
                     return_type,
-                    factories[return_type],
+                    factories[return_type][0],
                     method,
                 )
-            factories[return_type] = method
+            factories[return_type] = (method, _TypeHelper.accepts_container(method))
         return factories
 
     def resolve(
@@ -205,10 +207,11 @@ class _Resolver:
             self._resolving.discard(cls)
 
     def __make_from_factory(self, cls: type[T]) -> T | None:
-        factory = self._factory_by_return_type.get(cls)
-        if factory is None:
+        entry = self._factory_by_return_type.get(cls)
+        if entry is None:
             return None
-        if self.container is not None and _TypeHelper.accepts_container(factory):
+        factory, wants_container = entry
+        if self.container is not None and wants_container:
             return cast("T", factory(self.container))
         return cast("T", factory())
 
