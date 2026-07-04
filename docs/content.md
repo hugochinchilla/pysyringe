@@ -347,7 +347,7 @@ assert client1 is client2  # Same instance everywhere
 
 The cache key includes the class, positional arguments, and keyword arguments (order-independent for keywords). Different arguments produce different instances.
 
-Creation is **thread-safe** using double-checked locking---concurrent threads will never produce duplicate instances for the same key.
+Creation is **thread-safe** using a global lock---concurrent threads will never produce duplicate instances for the same key.
 
 Best for: connection pools, HTTP clients, configuration objects, and other thread-safe resources that should be shared globally.
 
@@ -373,7 +373,7 @@ Best for: database sessions, request-scoped state, and other resources that are 
 
 | Helper | Scope | Thread Safety | Use Case |
 |--------|-------|---------------|----------|
-| `singleton()` | Global | Double-checked locking | Connection pools, HTTP clients |
+| `singleton()` | Global | Global lock | Connection pools, HTTP clients |
 | `thread_local_singleton()` | Per-thread | Thread-local storage | Database sessions, request state |
 
 ## Overrides {#mocks}
@@ -440,7 +440,7 @@ PySyringe is designed with thread safety in mind:
 | `register_instance()` | Global | Shared across all threads. Configure at startup. |
 | Factory methods | Global | Indexed at container initialization. Shared across threads. |
 | `override()` / `overrides()` | Per-thread | Stored in thread-local storage. No cross-thread leakage. |
-| `singleton()` | Global | Thread-safe creation via double-checked locking. |
+| `singleton()` | Global | Thread-safe creation via a global lock. |
 | `thread_local_singleton()` | Per-thread | One instance per thread via `threading.local()`. |
 
 Implications:
@@ -634,7 +634,7 @@ Context manager that temporarily replaces multiple dependencies at once.
 
 <code class="api-signature">singleton(type_: type[T], *type_args, **type_kwargs) -> T</code>
 
-Create or retrieve a globally shared singleton instance. Thread-safe via double-checked locking. The cache key is the combination of the class, positional args, and keyword args.
+Create or retrieve a globally shared singleton instance. Thread-safe via a global lock. The cache key is the combination of the class, positional args, and keyword args.
 
 <table class="param-table">
 <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>

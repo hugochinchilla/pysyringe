@@ -105,7 +105,7 @@
     </div>
     <div class="feature-card">
       <h3>Thread-Safe by Design</h3>
-      <p>Thread-local mocks, double-checked locking singletons, and per-thread instance caching built in.</p>
+      <p>Thread-local mocks, globally locked singletons, and per-thread instance caching built in.</p>
     </div>
     <div class="feature-card">
       <h3>Test-Friendly</h3>
@@ -422,7 +422,7 @@
 </code></pre></div>
 
 <p>The cache key includes the class, positional arguments, and keyword arguments (order-independent for keywords). Different arguments produce different instances.</p>
-<p>Creation is <strong>thread-safe</strong> using double-checked locking&mdash;concurrent threads will never produce duplicate instances for the same key.</p>
+<p>Creation is <strong>thread-safe</strong> using a global lock&mdash;concurrent threads will never produce duplicate instances for the same key.</p>
 <p>Best for: connection pools, HTTP clients, configuration objects, and other thread-safe resources that should be shared globally.</p>
 <h2 id="thread-local-singleton" class="section-anchor">Thread-Local Singleton</h2>
 <p>The <code>thread_local_singleton()</code> helper creates or retrieves a per-thread instance. Each thread gets its own instance; within the same thread, repeated calls return the same object.</p>
@@ -453,7 +453,7 @@
 <tr>
 <td><code>singleton()</code></td>
 <td>Global</td>
-<td>Double-checked locking</td>
+<td>Global lock</td>
 <td>Connection pools, HTTP clients</td>
 </tr>
 <tr>
@@ -541,7 +541,7 @@
 <tr>
 <td><code>singleton()</code></td>
 <td>Global</td>
-<td>Thread-safe creation via double-checked locking.</td>
+<td>Thread-safe creation via a global lock.</td>
 </tr>
 <tr>
 <td><code>thread_local_singleton()</code></td>
@@ -693,7 +693,7 @@
 <h2 id="api-singleton" class="section-anchor">Singleton API</h2>
 <h3 id="singletontype_-args-kwargs" class="section-anchor">singleton(type_, <em>args, </em>*kwargs)</h3>
 <p><code class="api-signature">singleton(type_: type[T], <em>type_args, </em>*type_kwargs) -&gt; T</code></p>
-<p>Create or retrieve a globally shared singleton instance. Thread-safe via double-checked locking. The cache key is the combination of the class, positional args, and keyword args.</p>
+<p>Create or retrieve a globally shared singleton instance. Thread-safe via a global lock. The cache key is the combination of the class, positional args, and keyword args.</p>
 <table class="param-table">
 <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
 <tbody>

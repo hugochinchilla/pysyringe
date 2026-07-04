@@ -218,7 +218,7 @@ client2 = container.provide(DatabaseClient)
 assert client1 is client2  # Same instance, even across threads
 ```
 
-Creation is thread-safe: concurrent threads calling `singleton()` for the same key will never produce duplicate instances (double-checked locking).
+Creation is thread-safe: singleton creation is protected by a global lock, so concurrent threads calling `singleton()` for the same key will never produce duplicate instances.
 
 #### `thread_local_singleton()` — one instance per thread
 
