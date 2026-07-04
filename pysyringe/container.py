@@ -354,12 +354,7 @@ class _Injector:
             if not _is_provide_marker(hint):
                 continue
 
-            target_type: type | _Unresolved = _TypeHelper.disambiguate(
-                _unwrap_provide(hint)
-            )
-            if isinstance(target_type, _Unresolved):
-                continue
-            targets.append((p.name, target_type))
+            targets.append((p.name, _TypeHelper.disambiguate(_unwrap_provide(hint))))
         return targets
 
     def __resolve_targets(self, targets: list[tuple[str, type]]) -> dict[str, object]:
@@ -428,7 +423,7 @@ class _TypeHelper:
         return p.annotation is not p.empty
 
     @classmethod
-    def disambiguate(cls, type_: type[T]) -> type[T] | _Unresolved:
+    def disambiguate(cls, type_: type[T]) -> type[T]:
         if cls._is_union(type_):
             if cls._is_optional(type_):
                 return cls._resolve_optional(type_)

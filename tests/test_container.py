@@ -1,5 +1,6 @@
 import contextlib
 import inspect
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from threading import Barrier, Event
@@ -387,6 +388,24 @@ class ContainerTest:
 
         assert service.dep is mock_dep
         assert service.dep.source == "mocked"
+
+    def test_provide_builtin_type_raises_unknown_dependency_error(self):
+        container = Container()
+
+        with pytest.raises(
+            UnknownDependencyError,
+            match=r"Container does not know how to provide <class 'str'>$",
+        ):
+            container.provide(str)
+
+    def test_provides_extension_type_without_introspectable_signature(self):
+        # collections.deque has no introspectable __init__ signature; it must
+        # still be constructible instead of blowing up on inspect.signature.
+        container = Container()
+
+        instance = container.provide(deque)
+
+        assert isinstance(instance, deque)
 
 
 class RegisterInstanceTest:
@@ -969,6 +988,35 @@ class ProvideMarkerTest:
 
         assert result is sentinel
 
+    def test_inject_on_method_skips_self_parameter(self):
+        class Service:
+            pass
+
+        container = Container()
+
+        class View:
+            @container.inject
+            def handler(self, service: Provide[Service]):
+                return service
+
+        view = View()
+
+        assert isinstance(view.handler(), Service)
+
+    def test_unresolvable_builtin_provide_param_raises_at_call_time(self):
+        container = Container()
+
+        def handler(dep: Provide[str]):
+            return dep
+
+        injected = container.inject(handler)
+
+        with pytest.raises(
+            UnknownDependencyError,
+            match=r"Container does not know how to provide <class 'str'>",
+        ):
+            injected()
+
 
 class RecursiveResolutionTest:
     def test_factory_that_provides_its_own_return_type_raises_error(self):
@@ -1267,3 +1315,24 @@ class FactoryValidationTest:
         container = Container(Factory())
 
         assert isinstance(container.provide(Dep), Dep)
+
+    def test_static_and_class_factory_methods_are_registered(self):
+        class Logger:
+            pass
+
+        class Clock:
+            pass
+
+        class Factory:
+            @staticmethod
+            def create_logger() -> Logger:
+                return Logger()
+
+            @classmethod
+            def create_clock(cls) -> Clock:
+                return Clock()
+
+        container = Container(Factory())
+
+        assert isinstance(container.provide(Logger), Logger)
+        assert isinstance(container.provide(Clock), Clock)
