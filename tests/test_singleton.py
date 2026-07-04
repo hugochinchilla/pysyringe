@@ -78,6 +78,28 @@ class SingletonTest:
         assert call_count == 1
         assert all(r is results[0] for r in results)
 
+    def test_nested_singleton_calls_do_not_deadlock(self):
+        """Regression: a constructor calling singleton() while singleton()
+        held the (non-reentrant) creation lock deadlocked forever."""
+
+        class Config:
+            pass
+
+        class Pool:
+            def __init__(self) -> None:
+                self.config = singleton(Config)
+
+        result = []
+        worker = threading.Thread(
+            target=lambda: result.append(singleton(Pool)),
+            daemon=True,
+        )
+        worker.start()
+        worker.join(timeout=5)
+
+        assert result, "nested singleton() call deadlocked"
+        assert result[0].config is singleton(Config)
+
 
 class ThreadLocalSingletonTest:
     def test_create_from_type(self):

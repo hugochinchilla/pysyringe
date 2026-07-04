@@ -7,7 +7,9 @@ T = TypeVar("T")
 
 class _Cache:
     _entries: ClassVar[dict] = {}
-    _lock: ClassVar[threading.Lock] = threading.Lock()
+    # RLock: the factory runs while the lock is held, and a constructor may
+    # itself call singleton() — a plain Lock would deadlock on that reentry.
+    _lock: ClassVar = threading.RLock()
 
     @classmethod
     def get_or_create(cls, key: Hashable, factory: Callable[[], T]) -> T:

@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plain dataclasses (#19).
 - `singleton()` / `thread_local_singleton()` no longer raise `TypeError` when
   called with two or more keyword arguments (#21).
+- `singleton()` no longer deadlocks when a singleton's constructor itself
+  calls `singleton()`; the creation lock is now reentrant (#34).
 
 ### Changed
 
