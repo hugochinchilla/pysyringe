@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import inspect
 from collections import deque
+from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from threading import Barrier, Event
@@ -11,6 +12,7 @@ import pytest
 
 import pysyringe
 from pysyringe.container import (
+    AsyncFactoryError,
     Container,
     DuplicateFactoryMethodError,
     Provide,
@@ -245,6 +247,53 @@ class ContainerTest:
 
         assert service_from_other_thread.dependency is not mock_from_other_thread
         assert isinstance(service_from_other_thread.dependency, Database)
+
+    def test_override_does_not_leak_between_asyncio_tasks(self):
+        container = Container(DatabaseFactory())
+
+        async def scenario():
+            override_active = asyncio.Event()
+            other_task_done = asyncio.Event()
+
+            async def task_with_override() -> object:
+                mock_database = object()
+                with container.override(Database, mock_database):
+                    # Sanity check within the same task
+                    assert (
+                        container.provide(DatabaseService).dependency is mock_database
+                    )
+                    override_active.set()
+                    await other_task_done.wait()
+                return mock_database
+
+            async def task_without_override() -> DatabaseService:
+                await override_active.wait()
+                try:
+                    return container.provide(DatabaseService)
+                finally:
+                    other_task_done.set()
+
+            return await asyncio.gather(task_with_override(), task_without_override())
+
+        mock_database, service = asyncio.run(scenario())
+
+        assert service.dependency is not mock_database
+        assert isinstance(service.dependency, Database)
+
+    def test_task_spawned_inside_override_block_inherits_the_override(self):
+        container = Container(DatabaseFactory())
+        mock_database = object()
+
+        async def resolve() -> DatabaseService:
+            return container.provide(DatabaseService)
+
+        async def scenario() -> DatabaseService:
+            with container.override(Database, mock_database):
+                return await asyncio.create_task(resolve())
+
+        service = asyncio.run(scenario())
+
+        assert service.dependency is mock_database
 
     def test_init_service_with_default_argument(self):
         class Service:
@@ -1364,6 +1413,40 @@ class FactoryValidationTest:
         assert evaluated == []
         assert isinstance(container.provide(Db), Db)
 
+    def test_async_factory_method_raises_at_construction(self):
+        class Session:
+            pass
+
+        class Factory:
+            async def get_session(self) -> Session:
+                return Session()
+
+        with pytest.raises(AsyncFactoryError, match="get_session"):
+            Container(Factory())
+
+    def test_async_generator_factory_method_raises_at_construction(self):
+        class Session:
+            pass
+
+        class Factory:
+            async def get_session(self) -> AsyncIterator[Session]:
+                yield Session()
+
+        with pytest.raises(AsyncFactoryError, match="get_session"):
+            Container(Factory())
+
+    def test_async_factory_method_without_return_annotation_is_ignored(self):
+        class Dep:
+            pass
+
+        class Factory:
+            async def helper(self):
+                return "not a factory"
+
+        container = Container(Factory())
+
+        assert isinstance(container.provide(Dep), Dep)
+
     def test_factory_methods_without_return_annotation_are_ignored(self):
         class Dep:
             pass
@@ -1406,5 +1489,6 @@ class PublicApiTest:
         assert pysyringe.RecursiveResolutionError is RecursiveResolutionError
         assert pysyringe.UnresolvableUnionTypeError is UnresolvableUnionTypeError
         assert pysyringe.DuplicateFactoryMethodError is DuplicateFactoryMethodError
+        assert pysyringe.AsyncFactoryError is AsyncFactoryError
         assert pysyringe.singleton is singleton
         assert pysyringe.thread_local_singleton is thread_local_singleton

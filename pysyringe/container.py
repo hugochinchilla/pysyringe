@@ -4,6 +4,7 @@ import threading
 import typing
 from collections.abc import Callable, Hashable
 from contextlib import contextmanager
+from contextvars import ContextVar, Token
 from types import UnionType
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
@@ -93,35 +94,50 @@ class DuplicateFactoryMethodError(Exception):
         )
 
 
-class ThreadLocalMockStore:
-    """Thread-local stack of override maps to ensure thread safety."""
+class AsyncFactoryError(Exception):
+    def __init__(self, method: Callable) -> None:
+        name = getattr(method, "__name__", repr(method))
+        super().__init__(
+            f"Factory method '{name}' is 'async def'. Resolution is "
+            f"synchronous, so the coroutine would be injected un-awaited. "
+            f"Use a plain 'def' factory; it can still build and return "
+            f"async objects.",
+        )
+
+
+class _ContextLocalMockStore:
+    """Context-local stack of override maps.
+
+    Backed by a ContextVar, so overrides are isolated per thread *and* per
+    asyncio task; tasks spawned inside an override block inherit it.
+    """
 
     def __init__(self) -> None:
-        self._local = threading.local()
-
-    def _stack(self) -> list[dict]:
-        if not hasattr(self._local, "stack"):
-            self._local.stack = []
-        return cast("list", self._local.stack)
+        # Every push sets a new tuple instead of mutating in place: asyncio
+        # tasks share the object they inherited from the parent context, so
+        # in-place mutation would leak across tasks.
+        self._stack: ContextVar[tuple[dict, ...]] = ContextVar(
+            "pysyringe_overrides", default=()
+        )
 
     def get_mocks(self) -> dict:
-        """Get the active overrides for the current thread."""
-        stack = self._stack()
+        """Get the active overrides for the current thread or task."""
+        stack = self._stack.get()
         return stack[-1] if stack else {}
 
-    def push(self, overrides: dict) -> None:
-        """Activate *overrides* on top of the current ones for this thread."""
-        self._stack().append({**self.get_mocks(), **overrides})
+    def push(self, overrides: dict) -> Token:
+        """Activate *overrides* on top of the current ones; undo with pop()."""
+        return self._stack.set((*self._stack.get(), {**self.get_mocks(), **overrides}))
 
-    def pop(self) -> None:
-        self._stack().pop()
+    def pop(self, token: Token) -> None:
+        self._stack.reset(token)
 
 
 class _Resolver:
     def __init__(self, factory: object | None) -> None:
         self.factory = factory
         self.container: Container | None = None
-        self.mock_store = ThreadLocalMockStore()
+        self.mock_store = _ContextLocalMockStore()
         self.aliases: dict = {}
         self.instances: dict = {}
         self._local = threading.local()
@@ -161,6 +177,10 @@ class _Resolver:
             return_type = _TypeHelper.get_return_type(method)
             if return_type is inspect.Signature.empty:
                 continue
+            if inspect.iscoroutinefunction(method) or inspect.isasyncgenfunction(
+                method
+            ):
+                raise AsyncFactoryError(method)
             if return_type in factories:
                 raise DuplicateFactoryMethodError(
                     return_type,
@@ -276,14 +296,15 @@ class Container:
 
     @contextmanager
     def overrides(self, override_map: dict[type[T], T]) -> typing.Iterator[None]:
-        # Pushing onto the thread-local stack keeps the resolver itself
-        # untouched, so concurrent overrides in other threads are unaffected
-        # and cleanup is guaranteed even when the body raises.
-        self._resolver.mock_store.push(cast("dict", override_map))
+        # Pushing onto the context-local stack keeps the resolver itself
+        # untouched, so concurrent overrides in other threads or asyncio
+        # tasks are unaffected and cleanup is guaranteed even when the body
+        # raises.
+        token = self._resolver.mock_store.push(cast("dict", override_map))
         try:
             yield
         finally:
-            self._resolver.mock_store.pop()
+            self._resolver.mock_store.pop(token)
 
     @contextmanager
     def override(self, cls: type[T], mock: T) -> typing.Iterator[None]:

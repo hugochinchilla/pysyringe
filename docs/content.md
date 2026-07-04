@@ -66,7 +66,7 @@ The optional `factory` argument is any object whose public methods serve as fact
 
 When you call `container.provide(SomeType)`, the container follows a strict resolution order:
 
-1. **Active overrides** --- Check the current thread's override store. If `override()` or `overrides()` has replaced the type within an active `with` block, return the replacement.
+1. **Active overrides** --- Check the current thread's or asyncio task's override store. If `override()` or `overrides()` has replaced the type within an active `with` block, return the replacement.
 2. **Registered instance** --- If a pre-built object was registered for the type via `register_instance()`, return it.
 3. **Alias lookup** --- If the type was registered with `alias()`, recursively resolve the mapped implementation type.
 4. **Factory methods** --- Look up a factory method by return-type annotation. If found, call it and return the result. If the factory method accepts a `Container` parameter, the container passes itself.
@@ -120,6 +120,7 @@ Key rules for factory methods:
 - Methods must be **public** (no leading underscore).
 - Methods must have a **return-type annotation**. The container matches requested types to factory methods by this annotation.
 - The method name does not matter---only the return type is used for matching.
+- Methods must be **synchronous**. An `async def` (or async generator) factory method raises `AsyncFactoryError` at container construction --- see [Async Support](#async).
 - Factory methods can use `singleton()` or `thread_local_singleton()` to control instance sharing.
 
 ### Container-Aware Factories {#container-aware-factories}
@@ -372,6 +373,9 @@ class Factory:
 
 Best for: database sessions and other resources that are not thread-safe and should not be shared across threads. Note that instances are per-thread, not per-request: servers reuse worker threads, so an instance survives into the next request served by the same thread — reset any per-request state yourself.
 
+!!! note "Async caveat"
+    The scope is per-thread, not per-task. In an async app all tasks on the same event loop share one thread — and therefore one instance — so `thread_local_singleton()` degrades to a plain `singleton()`. Do not use it for per-request state in async servers.
+
 | Helper | Scope | Thread Safety | Use Case |
 |--------|-------|---------------|----------|
 | `singleton()` | Global | Lock-guarded creation | Connection pools, HTTP clients |
@@ -440,7 +444,7 @@ PySyringe is designed with thread safety in mind:
 | `alias()` | Global | Shared across all threads. Configure at startup. |
 | `register_instance()` | Global | Shared across all threads. Configure at startup. |
 | Factory methods | Global | Indexed at container initialization. Shared across threads. |
-| `override()` / `overrides()` | Per-thread | Stored in thread-local storage. No cross-thread leakage. |
+| `override()` / `overrides()` | Per-context | Stored in `contextvars`. No leakage across threads or asyncio tasks. |
 | `singleton()` | Global | Thread-safe creation guarded by a lock. |
 | `thread_local_singleton()` | Per-thread | One instance per thread via `threading.local()`. |
 
@@ -448,6 +452,21 @@ Implications:
 
 - A `with container.override(SomeType, mock)` block in one thread does not affect other threads.
 - To share behavior globally, use `alias()` or a factory method.
+
+## Async Support {#async}
+
+The container is safe to use in asyncio applications, with explicit limits on what resolution can do.
+
+What works:
+
+- **`@container.inject` on `async def` functions.** The decorated function is still a coroutine function, so framework async detection (e.g. Django's `inspect.iscoroutinefunction()` check) works. Dependencies are resolved synchronously each time the function is called, before the first `await`.
+- **Overrides are isolated per asyncio task.** `override()` / `overrides()` use `contextvars`, so concurrent tasks on the same event loop can hold different overrides without interfering. Tasks spawned inside an override block inherit it.
+
+Limitations:
+
+- **Factory methods must be synchronous.** An `async def` (or async generator) factory method raises `AsyncFactoryError` at container construction --- resolution never awaits, so the coroutine would be injected un-awaited. A plain `def` factory can still build and return async objects (engines, clients, pools).
+- **Resolution runs in the event loop.** A factory that blocks (opening connections, reading files) blocks the loop while a dependency is being resolved.
+- **`thread_local_singleton()` is per-thread, not per-task.** All tasks on one event loop share one instance --- see the caveat in [Thread-Local Singleton](#thread-local-singleton).
 
 ## Resolution Cache {#resolution-cache}
 

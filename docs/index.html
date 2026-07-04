@@ -175,7 +175,7 @@
 <h2 id="resolution" class="section-anchor">How Resolution Works</h2>
 <p>When you call <code>container.provide(SomeType)</code>, the container follows a strict resolution order:</p>
 <ol>
-<li><strong>Active overrides</strong> &mdash; Check the current thread&rsquo;s override store. If <code>override()</code> or <code>overrides()</code> has replaced the type within an active <code>with</code> block, return the replacement.</li>
+<li><strong>Active overrides</strong> &mdash; Check the current thread&rsquo;s or asyncio task&rsquo;s override store. If <code>override()</code> or <code>overrides()</code> has replaced the type within an active <code>with</code> block, return the replacement.</li>
 <li><strong>Registered instance</strong> &mdash; If a pre-built object was registered for the type via <code>register_instance()</code>, return it.</li>
 <li><strong>Alias lookup</strong> &mdash; If the type was registered with <code>alias()</code>, recursively resolve the mapped implementation type.</li>
 <li><strong>Factory methods</strong> &mdash; Look up a factory method by return-type annotation. If found, call it and return the result. If the factory method accepts a <code>Container</code> parameter, the container passes itself.</li>
@@ -226,6 +226,7 @@
 <li>Methods must be <strong>public</strong> (no leading underscore).</li>
 <li>Methods must have a <strong>return-type annotation</strong>. The container matches requested types to factory methods by this annotation.</li>
 <li>The method name does not matter&mdash;only the return type is used for matching.</li>
+<li>Methods must be <strong>synchronous</strong>. An <code>async def</code> (or async generator) factory method raises <code>AsyncFactoryError</code> at container construction &mdash; see <a href="#async">Async Support</a>.</li>
 <li>Factory methods can use <code>singleton()</code> or <code>thread_local_singleton()</code> to control instance sharing.</li>
 </ul>
 <h3 id="container-aware-factories" class="section-anchor">Container-Aware Factories</h3>
@@ -386,6 +387,7 @@
 <li>All other parameters are left untouched for the caller to provide.</li>
 <li>The function&rsquo;s <code>__signature__</code> is updated to reflect only the remaining (non-injected) parameters.</li>
 </ol>
+<p>Declare <code>Provide[T]</code> parameters last, after all caller-supplied parameters (as in the example above). Injected values are passed by keyword, so a caller&rsquo;s positional argument would otherwise land in an injected parameter&rsquo;s slot and fail with <code>TypeError</code>.</p>
 <p>In the example above, <code>user_service</code> is injected by the container while <code>request</code> is provided by the framework as usual. This makes <code>@container.inject</code> safe to use with any framework&mdash;Django, Flask, Dramatiq, etc.&mdash;because the container never interferes with framework-controlled parameters.</p>
 <div class="callout note">
 <strong>Note</strong>
@@ -438,7 +440,11 @@
         <span class="k">return</span> <span class="n">thread_local_singleton</span><span class="p">(</span><span class="n">DatabaseSession</span><span class="p">,</span> <span class="s2">&quot;postgresql://localhost/mydb&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<p>Best for: database sessions, request-scoped state, and other resources that are not thread-safe and should not be shared across threads.</p>
+<p>Best for: database sessions and other resources that are not thread-safe and should not be shared across threads. Note that instances are per-thread, not per-request: servers reuse worker threads, so an instance survives into the next request served by the same thread — reset any per-request state yourself.</p>
+<div class="callout note">
+<p class="admonition-title">Async caveat</p>
+<p>The scope is per-thread, not per-task. In an async app all tasks on the same event loop share one thread — and therefore one instance — so <code>thread_local_singleton()</code> degrades to a plain <code>singleton()</code>. Do not use it for per-request state in async servers.</p>
+</div>
 <table>
 <thead>
 <tr>
@@ -459,7 +465,7 @@
 <td><code>thread_local_singleton()</code></td>
 <td>Per-thread</td>
 <td>Thread-local storage</td>
-<td>Database sessions, request state</td>
+<td>Database sessions, per-thread state</td>
 </tr>
 </tbody>
 </table>
@@ -534,8 +540,8 @@
 </tr>
 <tr>
 <td><code>override()</code> / <code>overrides()</code></td>
-<td>Per-thread</td>
-<td>Stored in thread-local storage. No cross-thread leakage.</td>
+<td>Per-context</td>
+<td>Stored in <code>contextvars</code>. No leakage across threads or asyncio tasks.</td>
 </tr>
 <tr>
 <td><code>singleton()</code></td>
@@ -553,6 +559,19 @@
 <ul>
 <li>A <code>with container.override(SomeType, mock)</code> block in one thread does not affect other threads.</li>
 <li>To share behavior globally, use <code>alias()</code> or a factory method.</li>
+</ul>
+<h2 id="async" class="section-anchor">Async Support</h2>
+<p>The container is safe to use in asyncio applications, with explicit limits on what resolution can do.</p>
+<p>What works:</p>
+<ul>
+<li><strong><code>@container.inject</code> on <code>async def</code> functions.</strong> The decorated function is still a coroutine function, so framework async detection (e.g. Django&rsquo;s <code>inspect.iscoroutinefunction()</code> check) works. Dependencies are resolved synchronously each time the function is called, before the first <code>await</code>.</li>
+<li><strong>Overrides are isolated per asyncio task.</strong> <code>override()</code> / <code>overrides()</code> use <code>contextvars</code>, so concurrent tasks on the same event loop can hold different overrides without interfering. Tasks spawned inside an override block inherit it.</li>
+</ul>
+<p>Limitations:</p>
+<ul>
+<li><strong>Factory methods must be synchronous.</strong> An <code>async def</code> (or async generator) factory method raises <code>AsyncFactoryError</code> at container construction &mdash; resolution never awaits, so the coroutine would be injected un-awaited. A plain <code>def</code> factory can still build and return async objects (engines, clients, pools).</li>
+<li><strong>Resolution runs in the event loop.</strong> A factory that blocks (opening connections, reading files) blocks the loop while a dependency is being resolved.</li>
+<li><strong><code>thread_local_singleton()</code> is per-thread, not per-task.</strong> All tasks on one event loop share one instance &mdash; see the caveat in <a href="#thread-local-singleton">Thread-Local Singleton</a>.</li>
 </ul>
 <h2 id="resolution-cache" class="section-anchor">Resolution Cache</h2>
 <p>PySyringe includes a lightweight cache to speed up dependency resolution without affecting instance semantics.</p>

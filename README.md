@@ -22,7 +22,7 @@ Your business logic should not know a DI container exists. No decorators on your
 - 🏭 **Factory-based wiring**: resolve by return type annotations on your factory.
 - 🧩 **Inference-based construction**: auto-wire constructor dependencies by type hints.
 - 🧪 **Test-friendly overrides**: replace any dependency per test with the `override(...)` context manager — automatic cleanup, even on exceptions.
-- 🔒 **Thread-safe overrides**: overrides are scoped to the current thread; aliases are global.
+- 🔒 **Thread- and async-safe overrides**: overrides are scoped to the current thread and asyncio task; aliases are global.
 - 🧰 **Aliases**: map interfaces to implementations without writing factory methods.
 - 📌 **Pre-built instances**: bind a single object to one or more ports with `register_instance(...)`.
 - ⚡ **Resolution cache**: caches factory lookups and constructor introspection (not instances).
@@ -238,18 +238,31 @@ Each thread gets its own `DatabaseSession` instance. Within the same thread, rep
 
 Note that instances are per-thread, not per-request: servers reuse worker threads, so an instance created while handling one request survives into the next request served by the same thread. Reset any per-request state yourself.
 
+⚠️ **Async caveat**: the scope is per-thread, not per-task. In an async app all tasks on the same event loop share one thread — and therefore one instance — so `thread_local_singleton()` degrades to a plain `singleton()`. Do not use it for per-request state in async servers.
+
 #### Notes
 
 - The cache key includes: the class, positional args, and keyword args (order-independent for keywords).
 - Perfect for database connections, HTTP clients, or any resource that should be shared per configuration.
 
-### 🔒 Thread safety
+### 🔒 Thread and async safety
 
-The `Container` is thread-safe with respect to overrides. Overrides configured via `override()` / `overrides()` are stored in thread-local storage, so a `with` block in one thread does not affect what other threads see.
+The `Container` is safe to share across threads and asyncio tasks. Overrides configured via `override()` / `overrides()` are stored in context-local storage (`contextvars`), so a `with` block in one thread or task does not affect what other threads or tasks see.
 
 - **Shared across all threads**: `alias(...)`, `register_instance(...)`, and the factory configuration (methods on your factory used for resolution).
-- **Thread-local**: `override(...)` and `overrides(...)` apply only to the calling thread.
+- **Context-local**: `override(...)` and `overrides(...)` apply only to the calling thread or asyncio task. Tasks spawned inside an override block inherit it.
 
 Implications:
 - A `with container.override(SomeType, mock)` block in one thread will not change what another thread receives for `SomeType`.
+- Concurrent asyncio tasks on the same event loop can hold different overrides without interfering.
 - To share a behavior globally across threads, prefer `alias(...)` or implement a factory method.
+
+### ⚡ Async support and limitations
+
+`@container.inject` works on `async def` functions: the decorated function is still a coroutine function (so framework async detection, e.g. Django's, works), and its dependencies are resolved synchronously each time it is called, before the first `await`.
+
+Current limitations:
+
+- **Factory methods must be synchronous.** An `async def` (or async generator) factory method raises `AsyncFactoryError` when the container is constructed — resolution never awaits, so the coroutine would be injected un-awaited. A plain `def` factory can still build and return async objects (engines, clients, pools).
+- **Resolution runs in the event loop.** A factory that blocks (opening connections, reading files) blocks the loop while a dependency is being resolved.
+- **`thread_local_singleton()` is per-thread, not per-task.** See the caveat in the singleton helpers section.

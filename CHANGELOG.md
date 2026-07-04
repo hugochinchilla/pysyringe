@@ -52,8 +52,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   function, so frameworks that detect async handlers via
   `inspect.iscoroutinefunction()` (e.g. Django's async view detection) call
   it correctly instead of treating it as a sync function.
+- Overrides no longer leak between concurrent asyncio tasks. Override state
+  moved from thread-local storage to `contextvars`, so `override()` /
+  `overrides()` are isolated per thread *and* per task; tasks spawned inside
+  an override block inherit it.
 
 ### Changed
+
+- `async def` (and async generator) factory methods now raise
+  `AsyncFactoryError` at container construction instead of being registered
+  and silently injecting an un-awaited coroutine object. Resolution is
+  synchronous; a plain `def` factory can still build and return async
+  objects.
 
 - `@container.inject` no longer instantiates dependencies at decoration time;
   introspection happens once when decorating and resolution happens per call,
