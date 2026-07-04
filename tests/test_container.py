@@ -8,6 +8,7 @@ from typing import Any, Union, cast
 
 import pytest
 
+import pysyringe
 from pysyringe.container import (
     Container,
     DuplicateFactoryMethodError,
@@ -1336,3 +1337,15 @@ class FactoryValidationTest:
 
         assert isinstance(container.provide(Logger), Logger)
         assert isinstance(container.provide(Clock), Clock)
+
+
+class PublicApiTest:
+    def test_top_level_package_reexports_public_api(self):
+        assert pysyringe.Container is Container
+        assert pysyringe.Provide is Provide
+        assert pysyringe.UnknownDependencyError is UnknownDependencyError
+        assert pysyringe.RecursiveResolutionError is RecursiveResolutionError
+        assert pysyringe.UnresolvableUnionTypeError is UnresolvableUnionTypeError
+        assert pysyringe.DuplicateFactoryMethodError is DuplicateFactoryMethodError
+        assert pysyringe.singleton is singleton
+        assert pysyringe.thread_local_singleton is thread_local_singleton

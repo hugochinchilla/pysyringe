@@ -199,8 +199,7 @@ PySyringe provides two singleton helpers for use inside your factory methods. Bo
 #### `singleton()` — shared across all threads
 
 ```python
-from pysyringe.singleton import singleton
-from pysyringe import Container
+from pysyringe import Container, singleton
 
 
 class DatabaseClient:
@@ -225,7 +224,7 @@ Creation is thread-safe: a lock guarantees that concurrent threads calling `sing
 #### `thread_local_singleton()` — one instance per thread
 
 ```python
-from pysyringe.singleton import thread_local_singleton
+from pysyringe import thread_local_singleton
 
 
 class Factory:

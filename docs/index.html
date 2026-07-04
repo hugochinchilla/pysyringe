@@ -188,8 +188,7 @@
 </div>
 <h2 id="factories" class="section-anchor">Factory Methods</h2>
 <p>Factories give you full control over how dependencies are constructed. A factory is any object&mdash;the container discovers its public methods and indexes them by their return-type annotation.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">Container</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe.singleton</span><span class="w"> </span><span class="kn">import</span> <span class="n">singleton</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">Container</span><span class="p">,</span> <span class="n">singleton</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">EmailSender</span><span class="p">:</span>
@@ -401,7 +400,7 @@
 <p>If the type cannot be resolved, an <code>UnknownDependencyError</code> is raised.</p>
 <h2 id="singleton" class="section-anchor">Global Singleton</h2>
 <p>The <code>singleton()</code> helper creates or retrieves a globally shared instance. It is designed for use inside factory methods to ensure a single instance is shared across all threads.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe.singleton</span><span class="w"> </span><span class="kn">import</span> <span class="n">singleton</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">singleton</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">DatabaseClient</span><span class="p">:</span>
@@ -426,7 +425,7 @@
 <p>Best for: connection pools, HTTP clients, configuration objects, and other thread-safe resources that should be shared globally.</p>
 <h2 id="thread-local-singleton" class="section-anchor">Thread-Local Singleton</h2>
 <p>The <code>thread_local_singleton()</code> helper creates or retrieves a per-thread instance. Each thread gets its own instance; within the same thread, repeated calls return the same object.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe.singleton</span><span class="w"> </span><span class="kn">import</span> <span class="n">thread_local_singleton</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">thread_local_singleton</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">DatabaseSession</span><span class="p">:</span>
@@ -593,7 +592,7 @@
 <p>PySyringe raises clear exceptions when resolution fails:</p>
 <h4 id="unknowndependencyerror">UnknownDependencyError</h4>
 <p>Raised when <code>container.provide(SomeType)</code> cannot resolve the requested type through any strategy (mocks, aliases, factory, or inference).</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe.container</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnknownDependencyError</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnknownDependencyError</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="n">container</span><span class="o">.</span><span class="n">provide</span><span class="p">(</span><span class="n">SomeUnknownType</span><span class="p">)</span>
@@ -603,7 +602,7 @@
 
 <h4 id="unresolvableuniontypeerror">UnresolvableUnionTypeError</h4>
 <p>Raised during resolution when a constructor parameter uses a non-Optional union type like <code>A | B</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe.container</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnresolvableUnionTypeError</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnresolvableUnionTypeError</span>
 <span class="c1"># &quot;Cannot resolve [A | B]: remove UnionType or define a factory&quot;</span>
 </code></pre></div>
 
@@ -720,14 +719,14 @@
 <p><code class="api-signature">class UnknownDependencyError(Exception)</code></p>
 <p>Raised when <code>container.provide()</code> cannot resolve the requested type.</p>
 <p>Message format: <code>"Container does not know how to provide &lt;type&gt;"</code></p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe.container</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnknownDependencyError</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnknownDependencyError</span>
 </code></pre></div>
 
 <h3 id="unresolvableuniontypeerror_1" class="section-anchor">UnresolvableUnionTypeError</h3>
 <p><code class="api-signature">class UnresolvableUnionTypeError(Exception)</code></p>
 <p>Raised when a constructor parameter uses a non-Optional union type (e.g. <code>A | B</code>) that the container cannot disambiguate.</p>
 <p>Message format: <code>"Cannot resolve [type]: remove UnionType or define a factory"</code></p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe.container</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnresolvableUnionTypeError</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnresolvableUnionTypeError</span>
 </code></pre></div>
 
 </main>

@@ -82,8 +82,7 @@ If none of these strategies succeed, an `UnknownDependencyError` is raised.
 Factories give you full control over how dependencies are constructed. A factory is any object---the container discovers its public methods and indexes them by their return-type annotation.
 
 ```python
-from pysyringe import Container
-from pysyringe.singleton import singleton
+from pysyringe import Container, singleton
 
 
 class EmailSender:
@@ -325,7 +324,7 @@ If the type cannot be resolved, an `UnknownDependencyError` is raised.
 The `singleton()` helper creates or retrieves a globally shared instance. It is designed for use inside factory methods to ensure a single instance is shared across all threads.
 
 ```python
-from pysyringe.singleton import singleton
+from pysyringe import singleton
 
 
 class DatabaseClient:
@@ -356,7 +355,7 @@ Best for: connection pools, HTTP clients, configuration objects, and other threa
 The `thread_local_singleton()` helper creates or retrieves a per-thread instance. Each thread gets its own instance; within the same thread, repeated calls return the same object.
 
 ```python
-from pysyringe.singleton import thread_local_singleton
+from pysyringe import thread_local_singleton
 
 
 class DatabaseSession:
@@ -502,7 +501,7 @@ PySyringe raises clear exceptions when resolution fails:
 Raised when `container.provide(SomeType)` cannot resolve the requested type through any strategy (mocks, aliases, factory, or inference).
 
 ```python
-from pysyringe.container import UnknownDependencyError
+from pysyringe import UnknownDependencyError
 
 try:
     container.provide(SomeUnknownType)
@@ -515,7 +514,7 @@ except UnknownDependencyError as e:
 Raised during resolution when a constructor parameter uses a non-Optional union type like `A | B`.
 
 ```python
-from pysyringe.container import UnresolvableUnionTypeError
+from pysyringe import UnresolvableUnionTypeError
 # "Cannot resolve [A | B]: remove UnionType or define a factory"
 ```
 
@@ -671,7 +670,7 @@ Raised when `container.provide()` cannot resolve the requested type.
 Message format: `"Container does not know how to provide <type>"`
 
 ```python
-from pysyringe.container import UnknownDependencyError
+from pysyringe import UnknownDependencyError
 ```
 
 ### UnresolvableUnionTypeError
@@ -683,5 +682,5 @@ Raised when a constructor parameter uses a non-Optional union type (e.g. `A | B`
 Message format: `"Cannot resolve [type]: remove UnionType or define a factory"`
 
 ```python
-from pysyringe.container import UnresolvableUnionTypeError
+from pysyringe import UnresolvableUnionTypeError
 ```
