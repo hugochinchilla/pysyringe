@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   called with two or more keyword arguments (#21).
 - `singleton()` no longer deadlocks when a singleton's constructor itself
   calls `singleton()`; the creation lock is now reentrant (#34).
+- Functions decorated with `@container.inject` no longer raise `TypeError`
+  when the caller explicitly passes a value for a `Provide[T]` parameter as a
+  keyword argument; the caller's value now wins over container resolution (#35).
 
 ### Changed
 

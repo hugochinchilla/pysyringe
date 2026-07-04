@@ -826,6 +826,20 @@ class ProvideMarkerTest:
 
         assert result is mock_service
 
+    def test_caller_supplied_keyword_wins_over_injection(self):
+        class Service:
+            pass
+
+        container = Container()
+
+        def handler(request: object, service: Provide[Service]):
+            return service
+
+        injected = container.inject(handler)
+        mine = Service()
+
+        assert injected("req", service=mine) is mine
+
     def test_resolvable_unmarked_params_are_not_injected(self):
         class DepA:
             pass

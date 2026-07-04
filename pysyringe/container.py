@@ -316,7 +316,9 @@ class _Injector:
 
         @functools.wraps(function)
         def partial_function(*args, **kwargs) -> Any:
-            return function(*args, **kwargs, **self.__resolve_targets(targets))
+            # Caller-supplied keyword arguments win over container resolution.
+            pending = [t for t in targets if t[0] not in kwargs]
+            return function(*args, **kwargs, **self.__resolve_targets(pending))
 
         cast(Any, partial_function).__signature__ = self.__create_new_signature(
             function,
