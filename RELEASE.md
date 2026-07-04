@@ -1,7 +1,7 @@
 # Release process
 
 Releases are published to PyPI by `.github/workflows/publish.yml` when a
-`vN.N` or `vN.N.N` tag is pushed. The release commit must contain:
+`vN.N`, `vN.N.N`, or `vN.N.NrcN` tag is pushed. The release commit must contain:
 
 1. `__version__` in `pysyringe/__init__.py` set to the target version.
 2. A `## [X.Y.Z]` section in `CHANGELOG.md` holding the notes for this
@@ -93,6 +93,23 @@ $ git push && git push --tags
 CI then runs tests, checks that the tag matches `__version__`, checks that
 `CHANGELOG.md` contains `## [1.6.0]`, builds the wheel and sdist, creates a
 GitHub Release, and uploads to PyPI.
+
+## Release candidates
+
+Pre-releases use PEP 440 `rc` versions (`X.Y.Zrc1`) tagged `vX.Y.Zrc1`.
+The process is identical to a normal release, with the full rc version
+everywhere: `__version__ = "X.Y.Zrc1"`, a `## [X.Y.Zrc1]` changelog
+section (CI greps for the exact version, suffix included), and tag
+`vX.Y.Zrc1`.
+
+- The publish workflow marks the GitHub Release as a pre-release when the
+  tag contains `rc`.
+- PyPI treats `rc` versions as pre-releases automatically: plain
+  `pip install pysyringe` keeps resolving to the latest stable release;
+  users opt in with `pip install --pre pysyringe` or
+  `pysyringe==X.Y.Zrc1`.
+- When promoting to final, move the rc changelog notes under `## [X.Y.Z]`
+  (keeping the rc section is fine too) and release `X.Y.Z` normally.
 
 ## Before bumping
 

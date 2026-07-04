@@ -20,7 +20,8 @@ PACKAGE_DIR = DOCS_DIR.parent / "pysyringe"
 # into docs/index.html.  Older entries are static snapshots that already
 # live under docs/<path>/.
 DOC_VERSIONS = [
-    {"label": "2.0", "path": ".", "current": True},
+    {"label": "3.0", "path": ".", "current": True},
+    {"label": "2.0", "path": "2.0"},
     {"label": "1.5", "path": "1.5"},
 ]
 

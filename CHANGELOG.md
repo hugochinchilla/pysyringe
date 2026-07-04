@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0rc1] — 2026-07-04
+
 > **⚠️ Breaking change:** `Container(factory)` now raises
 > `DuplicateFactoryMethodError` at construction when two factory methods
 > declare the same return type. Code that previously started fine — with one
@@ -227,7 +229,8 @@ What the build asset for 1.5.0 should have been
 
 - Removed code that was not being needed.
 
-[Unreleased]: https://github.com/hugochinchilla/pysyringe/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/hugochinchilla/pysyringe/compare/v3.0.0rc1...HEAD
+[3.0.0rc1]: https://github.com/hugochinchilla/pysyringe/compare/v2.0.0...v3.0.0rc1
 [2.0.0]: https://github.com/hugochinchilla/pysyringe/compare/v1.5.2...v2.0.0
 [1.5.2]: https://github.com/hugochinchilla/pysyringe/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/hugochinchilla/pysyringe/compare/v1.4.2...v1.5.1
