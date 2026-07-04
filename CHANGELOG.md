@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> **⚠️ Breaking change:** `Container(factory)` now raises
+> `DuplicateFactoryMethodError` at construction when two factory methods
+> declare the same return type. Code that previously started fine — with one
+> factory method silently shadowing the other — will crash at startup after
+> upgrading. See [MIGRATION.md](MIGRATION.md#duplicate-factory-methods-raise-at-construction)
+> for how to find and fix duplicates. Because previously-working code can now
+> raise, this release warrants a major version bump.
+
 ### Fixed
 
 - `override()` / `overrides()` no longer leak the override when the body of the
@@ -48,10 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so importing a module with injected functions has no side effects and calls
   are faster (#24). Injected parameters are now always removed from the
   wrapped signature, whether or not they are currently resolvable.
-- Two factory methods declaring the same return type now raise
+- **Breaking:** two factory methods declaring the same return type now raise
   `DuplicateFactoryMethodError` at container construction instead of one
   silently shadowing the other; factory methods without a return annotation
-  are ignored (#25).
+  are ignored (#25). See MIGRATION.md.
 - Builtin types (`str`, `int`, `list`, ...) are never constructed through
   inference; requesting one without a factory raises
   `UnknownDependencyError` as documented.

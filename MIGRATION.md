@@ -1,3 +1,40 @@
+# Migrating from 2.x to the next release
+
+## Duplicate factory methods raise at construction
+
+In 2.x and earlier, when two factory methods declared the same return type,
+one silently shadowed the other — the losing method was never called, which
+could go unnoticed for a long time. `Container(factory)` now raises
+`DuplicateFactoryMethodError` at construction instead:
+
+```
+DuplicateFactoryMethodError: Multiple factory methods return <class 'myapp.EmailSender'>: 'get_mailer' and 'get_email_sender'
+```
+
+### How to find duplicates
+
+Construct the container once, e.g. in a test:
+
+```python
+def test_container_builds():
+    Container(Factory())
+```
+
+The error names the duplicated return type and both offending methods.
+Construction stops at the first duplicate, so re-run after each fix until it
+succeeds.
+
+### How to fix each duplicate
+
+- **Delete one of the two methods** if they build the same thing — keep the
+  one whose instance your application was actually receiving.
+- **Correct the return annotation** if the methods were meant to build
+  different types, e.g. both annotated with an interface when one should
+  declare a concrete subtype.
+- **Remove the return annotation** from helpers that were never meant to be
+  factory methods — methods without a return annotation are ignored by the
+  container.
+
 # Migrating from 1.x to 2.0
 
 ## `@container.inject` requires `Provide[T]` markers
