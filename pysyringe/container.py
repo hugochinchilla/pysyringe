@@ -102,7 +102,7 @@ class ThreadLocalMockStore:
     def _stack(self) -> list[dict]:
         if not hasattr(self._local, "stack"):
             self._local.stack = []
-        return cast(list, self._local.stack)
+        return cast("list", self._local.stack)
 
     def get_mocks(self) -> dict:
         """Get the active overrides for the current thread."""
@@ -120,7 +120,7 @@ class ThreadLocalMockStore:
 class _Resolver:
     def __init__(self, factory: object | None) -> None:
         self.factory = factory
-        self.container: "Container | None" = None
+        self.container: Container | None = None
         self.mock_store = ThreadLocalMockStore()
         self.aliases: dict = {}
         self.instances: dict = {}
@@ -136,19 +136,19 @@ class _Resolver:
     def _resolution_chain(self) -> list[tuple[type, str, type]]:
         if not hasattr(self._local, "chain"):
             self._local.chain = []
-        return cast(list, self._local.chain)
+        return cast("list", self._local.chain)
 
     @property
     def _resolving(self) -> set[type]:
         if not hasattr(self._local, "resolving"):
             self._local.resolving = set()
-        return cast(set, self._local.resolving)
+        return cast("set", self._local.resolving)
 
     @property
     def _resolving_stack(self) -> list[type]:
         if not hasattr(self._local, "resolving_stack"):
             self._local.resolving_stack = []
-        return cast(list, self._local.resolving_stack)
+        return cast("list", self._local.resolving_stack)
 
     def get_resolution_chain(self) -> list[tuple[type, str, type]]:
         return self._resolution_chain
@@ -173,14 +173,14 @@ class _Resolver:
     ) -> T | _Unresolved:
         mocks = self.mock_store.get_mocks()
         if cls in mocks:
-            return cast(T, mocks[cls])
+            return cast("T", mocks[cls])
 
         if cls in self.instances:
-            return cast(T, self.instances[cls])
+            return cast("T", self.instances[cls])
 
         if cls in self._resolving:
             start = self._resolving_stack.index(cls)
-            cycle = self._resolving_stack[start:] + [cls]
+            cycle = [*self._resolving_stack[start:], cls]
             raise RecursiveResolutionError(cls, cycle)
 
         self._resolving.add(cls)
@@ -209,8 +209,8 @@ class _Resolver:
         if factory is None:
             return None
         if self.container is not None and _TypeHelper.accepts_container(factory):
-            return cast(T, factory(self.container))
-        return cast(T, factory())
+            return cast("T", factory(self.container))
+        return cast("T", factory())
 
     def __build_factories(self) -> list[Callable]:
         # getattr_static keeps properties/descriptors from firing as a side
@@ -274,7 +274,7 @@ class Container:
         # Pushing onto the thread-local stack keeps the resolver itself
         # untouched, so concurrent overrides in other threads are unaffected
         # and cleanup is guaranteed even when the body raises.
-        self._resolver.mock_store.push(cast(dict, override_map))
+        self._resolver.mock_store.push(cast("dict", override_map))
         try:
             yield
         finally:
@@ -314,7 +314,7 @@ def _is_provide_marker(hint: object) -> bool:
 
 def _unwrap_provide(hint: type) -> type:
     """Extract the inner type *T* from ``Provide[T]``."""
-    return cast(type, typing.get_args(hint)[0])
+    return cast("type", typing.get_args(hint)[0])
 
 
 class _Injector:
@@ -330,7 +330,7 @@ class _Injector:
             pending = [t for t in targets if t[0] not in kwargs]
             return function(*args, **kwargs, **self.__resolve_targets(pending))
 
-        cast(Any, partial_function).__signature__ = self.__create_new_signature(
+        cast("Any", partial_function).__signature__ = self.__create_new_signature(
             function,
             {name for name, _ in targets},
         )
@@ -396,12 +396,12 @@ class _Injector:
 class _TypeHelper:
     @classmethod
     def get_constructor_kwargs(cls, subject: type[T]) -> list[tuple]:
-        return cls._cached_constructor_kwargs(cast(Hashable, subject))
+        return cls._cached_constructor_kwargs(cast("Hashable", subject))
 
     @staticmethod
     @functools.lru_cache(maxsize=512)
     def _cached_constructor_kwargs(key: Hashable) -> list[tuple]:
-        subject = cast(type, key)
+        subject = cast("type", key)
         try:
             parameters = inspect.signature(subject).parameters.values()
         except ValueError:
@@ -425,10 +425,7 @@ class _TypeHelper:
         if p.kind in (p.POSITIONAL_ONLY, p.VAR_POSITIONAL, p.VAR_KEYWORD):
             return False
 
-        if p.annotation is p.empty:
-            return False
-
-        return True
+        return p.annotation is not p.empty
 
     @classmethod
     def disambiguate(cls, type_: type[T]) -> type[T] | _Unresolved:
@@ -446,13 +443,8 @@ class _TypeHelper:
 
     @classmethod
     def _is_union(cls, type_: T) -> bool:
-        if typing.get_origin(type_) is typing.Union:
-            return True  # Syntax using "Union[object, str]"
-
-        if isinstance(type_, UnionType):
-            return True  # Syntax using "object | str"
-
-        return False
+        # Covers both the Union[object, str] and the "object | str" syntax.
+        return typing.get_origin(type_) is typing.Union or isinstance(type_, UnionType)
 
     @staticmethod
     def _is_optional(type_: object) -> bool:
@@ -465,7 +457,7 @@ class _TypeHelper:
     def _resolve_optional(type_: type[T | None]) -> type[T]:
         types = set(typing.get_args(type_))
         types.remove(type(None))
-        return cast(type[T], types.pop())
+        return cast("type[T]", types.pop())
 
     @staticmethod
     def accepts_container(method: Callable) -> bool:
@@ -478,5 +470,5 @@ class _TypeHelper:
     def get_return_type(method: Callable) -> type:
         hints = typing.get_type_hints(method)
         if "return" in hints:
-            return cast(type, hints["return"])
-        return cast(type, inspect.signature(method).return_annotation)
+            return cast("type", hints["return"])
+        return cast("type", inspect.signature(method).return_annotation)

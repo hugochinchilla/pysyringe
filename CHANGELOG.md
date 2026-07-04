@@ -55,6 +55,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Builtin types (`str`, `int`, `list`, ...) are never constructed through
   inference; requesting one without a factory raises
   `UnknownDependencyError` as documented.
+- Updated the pre-commit `ruff` hook from v0.3.0 to v0.13.2 to match the
+  locked dev dependency, and cleaned up the findings the old version
+  missed; `pre-commit-hooks` bumped to v5.0.0 (#41).
 
 ## [2.0.0]
 

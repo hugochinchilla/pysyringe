@@ -16,7 +16,7 @@ class _Cache:
         with cls._lock:
             if key not in cls._entries:
                 cls._entries[key] = factory()
-            return cast(T, cls._entries[key])
+            return cast("T", cls._entries[key])
 
 
 def singleton(type_: type[T], *type_args, **type_kwargs) -> T:
@@ -37,7 +37,7 @@ class _ThreadLocalCache:
         if key not in entries:
             entries[key] = factory()
 
-        return cast(T, entries[key])
+        return cast("T", entries[key])
 
 
 def thread_local_singleton(type_: type[T], *type_args, **type_kwargs) -> T:

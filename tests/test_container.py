@@ -1,7 +1,9 @@
 import contextlib
 import inspect
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import Any, Union
+from threading import Barrier, Event
+from typing import Any, Union, cast
 
 import pytest
 
@@ -212,9 +214,6 @@ class ContainerTest:
         assert client1.connection_string == "postgresql://localhost:5432/mydb"
 
     def test_override_does_not_leak_between_threads(self):
-        from concurrent.futures import ThreadPoolExecutor
-        from threading import Event
-
         container = Container(DatabaseFactory())
         override_active = Event()
         other_thread_done = Event()
@@ -488,8 +487,6 @@ class RegisterInstanceTest:
         assert container.provide(Service) is registered
 
     def test_registered_instance_visible_across_threads(self):
-        from concurrent.futures import ThreadPoolExecutor
-
         class Service:
             pass
 
@@ -583,8 +580,6 @@ class ThreadLocalSingletonWithMocksTest:
         assert after.dsn == "prod://db"
 
     def test_override_thread_local_singleton_does_not_leak_to_other_threads(self):
-        from concurrent.futures import ThreadPoolExecutor
-
         class DbClient:
             def __init__(self, dsn: str) -> None:
                 self.dsn = dsn
@@ -924,10 +919,8 @@ class ProvideMarkerTest:
 
         handler.custom_attr = "kept"  # type: ignore[attr-defined]
 
-        from typing import cast
-
         container = Container()
-        injected = cast(Any, container.inject(handler))
+        injected = cast("Any", container.inject(handler))
 
         assert injected.__name__ == "handler"
         assert injected.__qualname__ == handler.__qualname__
@@ -1117,8 +1110,6 @@ class OverrideRobustnessTest:
         """Regression: overlapping override() blocks in two threads used to
         swap in a temp resolver and restore them in the wrong order, leaving
         a stale resolver installed forever."""
-        from concurrent.futures import ThreadPoolExecutor
-        from threading import Event
 
         class Service:
             pass
@@ -1156,9 +1147,6 @@ class OverrideRobustnessTest:
         """Regression: cycle-detection state was shared across threads, so two
         threads constructing the same type concurrently raised a spurious
         RecursiveResolutionError."""
-        from concurrent.futures import ThreadPoolExecutor
-        from threading import Barrier
-
         barrier = Barrier(2)
 
         class Slow:

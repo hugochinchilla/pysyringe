@@ -4,7 +4,7 @@ default_stages: [pre-commit]
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v5.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -12,8 +12,10 @@ repos:
         args: [--allow-multiple-documents]
       - id: check-added-large-files
 
+  # Keep this rev in sync with the ruff version locked in uv.lock, or CI
+  # lints with a different ruff than `uv run ruff check`.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.0
+    rev: v0.13.2
     hooks:
       - id: ruff-format
       - id: ruff
