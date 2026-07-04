@@ -15,7 +15,7 @@ coverage-all:
 	@$(foreach v,$(PYTHON_VERSIONS), \
 		ENVIRONMENT=test uv run --python $(v) coverage run --data-file=.coverage.py$(v) -m pytest || exit $$?; \
 	)
-	uv run --python 3.15 coverage combine .coverage.py3*
+	uv run coverage combine .coverage.py3*
 	uv run coverage xml
 	uv run coverage html
 	uv run coverage report -m

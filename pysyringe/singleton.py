@@ -18,7 +18,7 @@ class _Cache:
 
 
 def singleton(type_: type[T], *type_args, **type_kwargs) -> T:
-    key = (*(type_,), *(type_args,), *tuple(*sorted(type_kwargs.items())))
+    key = (type_, type_args, tuple(sorted(type_kwargs.items())))
     return _Cache.get_or_create(key, lambda: type_(*type_args, **type_kwargs))
 
 
@@ -39,7 +39,7 @@ class _ThreadLocalCache:
 
 
 def thread_local_singleton(type_: type[T], *type_args, **type_kwargs) -> T:
-    key = (*(type_,), *(type_args,), *tuple(*sorted(type_kwargs.items())))
+    key = (type_, type_args, tuple(sorted(type_kwargs.items())))
     return _ThreadLocalCache.get_or_create(
         key, lambda: type_(*type_args, **type_kwargs)
     )

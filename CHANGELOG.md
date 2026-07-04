@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `override()` / `overrides()` no longer leak the override when the body of the
+  `with` block raises; cleanup now happens in a `finally` block (#18).
+- Overlapping `override()` blocks in different threads no longer corrupt the
+  container. Override state now lives in a thread-local stack instead of
+  swapping the container's resolver (#22).
+- Cycle-detection and resolution-chain state is now thread-local, eliminating
+  spurious `RecursiveResolutionError` when two threads resolve the same type
+  concurrently (#23).
+- Dependencies whose instances are falsy (empty collections, objects with
+  `__len__`/`__bool__` returning zero/False) resolve correctly instead of
+  raising `UnknownDependencyError` (#20).
+- `@container.inject` no longer crashes on unhashable dependencies such as
+  plain dataclasses (#19).
+- `singleton()` / `thread_local_singleton()` no longer raise `TypeError` when
+  called with two or more keyword arguments (#21).
+
+### Changed
+
+- `@container.inject` no longer instantiates dependencies at decoration time;
+  introspection happens once when decorating and resolution happens per call,
+  so importing a module with injected functions has no side effects and calls
+  are faster (#24). Injected parameters are now always removed from the
+  wrapped signature, whether or not they are currently resolvable.
+- Two factory methods declaring the same return type now raise
+  `DuplicateFactoryMethodError` at container construction instead of one
+  silently shadowing the other; factory methods without a return annotation
+  are ignored (#25).
+- Builtin types (`str`, `int`, `list`, ...) are never constructed through
+  inference; requesting one without a factory raises
+  `UnknownDependencyError` as documented.
+
 ## [2.0.0]
 
 ### Added

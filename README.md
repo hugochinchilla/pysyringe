@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="PySyringe - Dependency Injection for Python" width="100%"/>
+  <img src="https://raw.githubusercontent.com/hugochinchilla/pysyringe/master/assets/banner.svg" alt="PySyringe - Dependency Injection for Python" width="100%"/>
 </p>
 
 <p align="center">
@@ -127,7 +127,7 @@ def get_now(request: HttpRequest, calendar: Provide[CalendarInterface]) -> HttpR
     return HttpResponse(calendar.now().isoformat())
 ```
 
-`request` is provided by Django as usual. `calendar` is injected by the container. No `never_provide()` needed — the container only touches what you explicitly mark.
+`request` is provided by Django as usual. `calendar` is injected by the container. The container only touches what you explicitly mark.
 
 ### 5) Replace dependencies in tests
 
@@ -218,7 +218,7 @@ client2 = container.provide(DatabaseClient)
 assert client1 is client2  # Same instance, even across threads
 ```
 
-Creation is thread-safe: concurrent threads calling `singleton()` for the same key will never produce duplicate instances (double-checked locking).
+Creation is thread-safe: a lock guarantees that concurrent threads calling `singleton()` for the same key never produce duplicate instances. Note the lock is global, so a slow constructor briefly blocks other singleton creations.
 
 #### `thread_local_singleton()` — one instance per thread
 

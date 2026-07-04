@@ -29,6 +29,22 @@ class SingletonTest:
         assert isinstance(instance, DummyClass)
         assert instance == instance_again
 
+    def test_singleton_with_multiple_keyword_arguments(self):
+        """Regression: two or more kwargs used to raise TypeError while
+        building the cache key."""
+
+        class DummyClass:
+            def __init__(self, host: str, port: int) -> None:
+                self.host = host
+                self.port = port
+
+        instance = singleton(DummyClass, host="localhost", port=5432)
+        same_kwargs_other_order = singleton(DummyClass, port=5432, host="localhost")
+        other = singleton(DummyClass, host="localhost", port=5433)
+
+        assert instance is same_kwargs_other_order
+        assert instance is not other
+
     def test_singleton_provide_with_different_arguments(self):
         class DummyClass:
             def __init__(self, value: str) -> None:
@@ -96,6 +112,17 @@ class ThreadLocalSingletonTest:
         other = thread_local_singleton(Service, "two")
 
         assert instance is not other
+
+    def test_with_multiple_keyword_arguments(self):
+        class Service:
+            def __init__(self, host: str, port: int) -> None:
+                self.host = host
+                self.port = port
+
+        instance = thread_local_singleton(Service, host="localhost", port=5432)
+        again = thread_local_singleton(Service, port=5432, host="localhost")
+
+        assert instance is again
 
     def test_different_threads_get_different_instances(self):
         class Service:

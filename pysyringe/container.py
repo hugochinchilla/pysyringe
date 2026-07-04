@@ -26,7 +26,7 @@ _provide_marker = _ProvideMarker()
 
 
 if TYPE_CHECKING:
-    Provide: typing.TypeAlias = typing.Annotated[T, _provide_marker]  # noqa: UP040
+    Provide: typing.TypeAlias = typing.Annotated[T, _provide_marker]
 else:
 
     class Provide:
@@ -83,22 +83,38 @@ class UnresolvableUnionTypeError(Exception):
         )
 
 
+class DuplicateFactoryMethodError(Exception):
+    def __init__(self, type_: type, first: Callable, second: Callable) -> None:
+        first_name = getattr(first, "__name__", repr(first))
+        second_name = getattr(second, "__name__", repr(second))
+        super().__init__(
+            f"Multiple factory methods return {type_}: "
+            f"'{first_name}' and '{second_name}'",
+        )
+
+
 class ThreadLocalMockStore:
-    """Thread-local storage for mocks to ensure thread safety."""
+    """Thread-local stack of override maps to ensure thread safety."""
 
     def __init__(self) -> None:
         self._local = threading.local()
 
-    def get_mocks(self) -> dict:
-        """Get the mocks dictionary for the current thread."""
-        if not hasattr(self._local, "mocks"):
-            self._local.mocks = {}
-        return cast(dict, self._local.mocks)
+    def _stack(self) -> list[dict]:
+        if not hasattr(self._local, "stack"):
+            self._local.stack = []
+        return cast(list, self._local.stack)
 
-    def set_mock(self, cls: type, mock: Any) -> None:
-        """Set a mock for a class in the current thread."""
-        mocks = self.get_mocks()
-        mocks[cls] = mock
+    def get_mocks(self) -> dict:
+        """Get the active overrides for the current thread."""
+        stack = self._stack()
+        return stack[-1] if stack else {}
+
+    def push(self, overrides: dict) -> None:
+        """Activate *overrides* on top of the current ones for this thread."""
+        self._stack().append({**self.get_mocks(), **overrides})
+
+    def pop(self) -> None:
+        self._stack().pop()
 
 
 class _Resolver:
@@ -108,20 +124,49 @@ class _Resolver:
         self.mock_store = ThreadLocalMockStore()
         self.aliases: dict = {}
         self.instances: dict = {}
-        self._resolution_chain: list[tuple[type, str, type]] = []
-        self._resolving: set[type] = set()
-        self._resolving_stack: list[type] = []
+        self._local = threading.local()
         self._factory_by_return_type: dict[type, Callable] = (
-            {
-                _TypeHelper.get_return_type(factory): factory
-                for factory in self.__build_factories()
-            }
-            if self.factory is not None
-            else {}
+            self.__map_factories_by_return_type() if self.factory is not None else {}
         )
+
+    # Cycle detection and the error resolution chain are per-thread state:
+    # sharing them across threads makes concurrent resolution of the same
+    # type look like a recursive cycle.
+    @property
+    def _resolution_chain(self) -> list[tuple[type, str, type]]:
+        if not hasattr(self._local, "chain"):
+            self._local.chain = []
+        return cast(list, self._local.chain)
+
+    @property
+    def _resolving(self) -> set[type]:
+        if not hasattr(self._local, "resolving"):
+            self._local.resolving = set()
+        return cast(set, self._local.resolving)
+
+    @property
+    def _resolving_stack(self) -> list[type]:
+        if not hasattr(self._local, "resolving_stack"):
+            self._local.resolving_stack = []
+        return cast(list, self._local.resolving_stack)
 
     def get_resolution_chain(self) -> list[tuple[type, str, type]]:
         return self._resolution_chain
+
+    def __map_factories_by_return_type(self) -> dict[type, Callable]:
+        factories: dict[type, Callable] = {}
+        for method in self.__build_factories():
+            return_type = _TypeHelper.get_return_type(method)
+            if return_type is inspect.Signature.empty:
+                continue
+            if return_type in factories:
+                raise DuplicateFactoryMethodError(
+                    return_type,
+                    factories[return_type],
+                    method,
+                )
+            factories[return_type] = method
+        return factories
 
     def resolve(
         self, cls: type[T], default: T | _Unresolved = _unresolved
@@ -145,11 +190,11 @@ class _Resolver:
         self._resolving_stack.append(cls)
         try:
             instance = self.__make_from_factory(cls)
-            if instance:
+            if instance is not None:
                 return instance
 
             instance = self.__make_from_inference(cls)
-            if instance:
+            if instance is not None:
                 return instance
 
             return default
@@ -172,6 +217,10 @@ class _Resolver:
         return [attr for attr in attrs if callable(attr)]
 
     def __make_from_inference(self, cls: type[T]) -> T | None:
+        # Builtins (str, int, list, ...) are all zero-arg constructible, but
+        # "provide me a str" is always a wiring mistake — never infer them.
+        if getattr(cls, "__module__", None) == "builtins":
+            return None
         args = ()
         kwargs = {}
         for arg_name, arg_type, default in _TypeHelper.get_constructor_kwargs(cls):
@@ -212,21 +261,14 @@ class Container:
 
     @contextmanager
     def overrides(self, override_map: dict[type[T], T]) -> typing.Iterator[None]:
-        temp_resolver = _Resolver(self._resolver.factory)
-        temp_resolver.container = self
-        # Carry over overrides from any enclosing override() block so nested
-        # overrides see outer replacements.
-        for cls, mock in self._resolver.mock_store.get_mocks().items():
-            temp_resolver.mock_store.set_mock(cls, mock)
-        temp_resolver.aliases = dict(self._resolver.aliases)
-        temp_resolver.instances = dict(self._resolver.instances)
-        for class_type, implementation in override_map.items():
-            temp_resolver.mock_store.set_mock(class_type, implementation)
-        original_resolver = self._resolver
-        self._resolver = temp_resolver
-        yield
-        self._resolver = original_resolver
-        del temp_resolver
+        # Pushing onto the thread-local stack keeps the resolver itself
+        # untouched, so concurrent overrides in other threads are unaffected
+        # and cleanup is guaranteed even when the body raises.
+        self._resolver.mock_store.push(cast(dict, override_map))
+        try:
+            yield
+        finally:
+            self._resolver.mock_store.pop()
 
     @contextmanager
     def override(self, cls: type[T], mock: T) -> typing.Iterator[None]:
@@ -270,25 +312,28 @@ class _Injector:
         self._resolver = _resolver
 
     def inject(self, function: Callable) -> Callable:
-        injections = self.__get_injectable_arguments(function)
+        targets = self.__get_injection_targets(function)
 
         @functools.wraps(function)
         def partial_function(*args, **kwargs) -> Any:
-            injections = self.__get_injectable_arguments(function)
-            return function(*args, **kwargs, **injections)
+            return function(*args, **kwargs, **self.__resolve_targets(targets))
 
         cast(Any, partial_function).__signature__ = self.__create_new_signature(
             function,
-            injections,
+            {name for name, _ in targets},
         )
 
         return partial_function
 
-    def __get_injectable_arguments(self, function: Callable) -> dict[str, object]:
+    def __get_injection_targets(self, function: Callable) -> list[tuple[str, type]]:
+        """Collect ``(parameter name, type)`` for ``Provide[T]``-marked params.
+
+        Introspection happens once at decoration time; resolution happens
+        per call, so decorating a function has no side effects.
+        """
         signature = inspect.signature(function)
         hints = typing.get_type_hints(function, include_extras=True)
-        resolved_arguments = set()
-        chain = self._resolver.get_resolution_chain()
+        targets: list[tuple[str, type]] = []
         for p in signature.parameters.values():
             if p.name == "self":
                 continue
@@ -297,36 +342,38 @@ class _Injector:
             if not _is_provide_marker(hint):
                 continue
 
-            resolved_or_unresolved: type | _Unresolved = _TypeHelper.disambiguate(
+            target_type: type | _Unresolved = _TypeHelper.disambiguate(
                 _unwrap_provide(hint)
             )
-            if isinstance(resolved_or_unresolved, _Unresolved):
+            if isinstance(target_type, _Unresolved):
                 continue
+            targets.append((p.name, target_type))
+        return targets
+
+    def __resolve_targets(self, targets: list[tuple[str, type]]) -> dict[str, object]:
+        injections: dict[str, object] = {}
+        chain = self._resolver.get_resolution_chain()
+        for name, target_type in targets:
             depth = len(chain)
             try:
-                resolved_arguments.add(
-                    (p.name, self._resolver.resolve(resolved_or_unresolved))
-                )
+                resolved = self._resolver.resolve(target_type)
+                if not isinstance(resolved, _Unresolved):
+                    injections[name] = resolved
             except UnknownDependencyError:
                 pass
             finally:
                 del chain[depth:]
-        only_resolved = {
-            (parameter_name, value)
-            for (parameter_name, value) in resolved_arguments
-            if not isinstance(value, _Unresolved)
-        }
-        return dict(only_resolved)
+        return injections
 
     def __create_new_signature(
         self,
         function: Callable,
-        injections: dict[str, T],
+        injected_names: set[str],
     ) -> inspect.Signature:
         remaining_parameters = [
             p
             for p in inspect.signature(function).parameters.values()
-            if p.name not in injections
+            if p.name not in injected_names
         ]
 
         return inspect.Signature(

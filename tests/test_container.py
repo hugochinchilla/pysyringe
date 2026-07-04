@@ -1,11 +1,13 @@
 import contextlib
 import inspect
+from dataclasses import dataclass
 from typing import Any, Union
 
 import pytest
 
 from pysyringe.container import (
     Container,
+    DuplicateFactoryMethodError,
     Provide,
     RecursiveResolutionError,
     UnknownDependencyError,
@@ -1023,3 +1025,161 @@ class RecursiveResolutionTest:
         mock_service = Service()
         with container.override(Service, mock_service):
             assert container.provide(Service) is mock_service
+
+
+class OverrideRobustnessTest:
+    def test_override_is_cleaned_up_when_body_raises(self):
+        class Service:
+            pass
+
+        container = Container()
+        mock = Service()
+
+        with pytest.raises(RuntimeError), container.override(Service, mock):
+            raise RuntimeError
+
+        assert container.provide(Service) is not mock
+
+    def test_concurrent_overrides_in_different_threads_restore_cleanly(self):
+        """Regression: overlapping override() blocks in two threads used to
+        swap in a temp resolver and restore them in the wrong order, leaving
+        a stale resolver installed forever."""
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Event
+
+        class Service:
+            pass
+
+        container = Container()
+        a_entered, b_entered, a_exited = Event(), Event(), Event()
+        mocks = []
+
+        def thread_a():
+            mock = Service()
+            mocks.append(mock)
+            with container.override(Service, mock):
+                a_entered.set()
+                b_entered.wait(timeout=5)
+            a_exited.set()
+
+        def thread_b():
+            a_entered.wait(timeout=5)
+            mock = Service()
+            mocks.append(mock)
+            with container.override(Service, mock):
+                b_entered.set()
+                a_exited.wait(timeout=5)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            future_a = pool.submit(thread_a)
+            future_b = pool.submit(thread_b)
+            future_a.result()
+            future_b.result()
+
+        provided = container.provide(Service)
+        assert all(provided is not mock for mock in mocks)
+
+    def test_concurrent_resolution_of_same_type_is_not_reported_as_recursive(self):
+        """Regression: cycle-detection state was shared across threads, so two
+        threads constructing the same type concurrently raised a spurious
+        RecursiveResolutionError."""
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+
+        barrier = Barrier(2)
+
+        class Slow:
+            def __init__(self) -> None:
+                # Both threads must be inside __init__ at the same time.
+                barrier.wait(timeout=5)
+
+        container = Container()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(container.provide, Slow) for _ in range(2)]
+            results = [f.result() for f in futures]
+
+        assert all(isinstance(r, Slow) for r in results)
+
+
+class FalsyInstanceTest:
+    def test_factory_returning_falsy_instance(self):
+        class Items(list):
+            pass
+
+        class Factory:
+            def get_items(self) -> Items:
+                return Items()  # empty list -> falsy
+
+        container = Container(Factory())
+
+        assert isinstance(container.provide(Items), Items)
+
+    def test_inference_creating_falsy_instance(self):
+        class Empty:
+            def __len__(self) -> int:
+                return 0
+
+        container = Container()
+
+        assert isinstance(container.provide(Empty), Empty)
+
+
+class InjectorRobustnessTest:
+    def test_inject_supports_unhashable_dependencies(self):
+        @dataclass
+        class Config:
+            pass
+
+        def handler(config: Provide[Config]):
+            return config
+
+        container = Container()
+        injected = container.inject(handler)
+
+        assert isinstance(injected(), Config)
+
+    def test_inject_does_not_instantiate_dependencies_at_decoration_time(self):
+        instantiations = []
+
+        class Tracked:
+            def __init__(self) -> None:
+                instantiations.append(self)
+
+        def handler(dep: Provide[Tracked]):
+            return dep
+
+        container = Container()
+        injected = container.inject(handler)
+
+        assert instantiations == []
+
+        result = injected()
+
+        assert isinstance(result, Tracked)
+        assert len(instantiations) == 1
+
+
+class FactoryValidationTest:
+    def test_duplicate_factory_return_types_raise_at_construction(self):
+        class Factory:
+            def make_one(self) -> Database:
+                return Database("one")
+
+            def make_two(self) -> Database:
+                return Database("two")
+
+        with pytest.raises(DuplicateFactoryMethodError, match="Database"):
+            Container(Factory())
+
+    def test_factory_methods_without_return_annotation_are_ignored(self):
+        class Dep:
+            pass
+
+        class Factory:
+            def helper(self):
+                return "not a factory"
+
+        container = Container(Factory())
+
+        assert isinstance(container.provide(Dep), Dep)

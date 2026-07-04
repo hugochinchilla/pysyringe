@@ -10,6 +10,18 @@ license = {text = "MIT"}
 
 requires-python = ">=3.11"
 dependencies = []
+keywords = ["dependency-injection", "di", "ioc", "container", "inject"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
 
 [dependency-groups]
 dev = [
@@ -105,8 +117,8 @@ line-length = 88
 # Allow unused variables when underscore-prefixed.
 lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
-# Assume Python 3.12
-target-version = "py312"
+# Match requires-python so 3.12-only syntax is rejected.
+target-version = "py311"
 
 cache-dir = ".cache/ruff"
 
@@ -119,7 +131,7 @@ max-complexity = 10
 
 
 [tool.ty.environment]
-python-version = "3.12"
+python-version = "3.11"
 
 [tool.ty.src]
 exclude = ["docs/"]
