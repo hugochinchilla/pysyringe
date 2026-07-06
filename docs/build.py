@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build the PySyringe documentation site from Markdown source."""
 
+import hashlib
 import re
 from html import escape
 from pathlib import Path
@@ -154,7 +155,11 @@ def build():
     version = read_version()
     version_options = build_version_options()
 
+    # Cache-buster: changes only when the stylesheet content changes.
+    style_hash = hashlib.md5((SITE_DIR / "style.css").read_bytes()).hexdigest()[:8]
+
     output = template.replace("{{VERSION}}", version)
+    output = output.replace("{{STYLE_HASH}}", style_hash)
     output = output.replace("{{VERSION_OPTIONS}}", version_options)
     output = output.replace("{{CONTENT}}", content_html)
     output = output.replace("{{SIDEBAR}}", sidebar_html)
