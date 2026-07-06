@@ -14,11 +14,12 @@ from markdown.extensions.tables import TableExtension
 from markdown.extensions.toc import TocExtension
 
 DOCS_DIR = Path(__file__).parent
+SITE_DIR = DOCS_DIR / "docs"
 PACKAGE_DIR = DOCS_DIR.parent / "pysyringe"
 
 # Ordered newest-first.  The first entry is treated as "current" and built
-# into docs/index.html.  Older entries are static snapshots that already
-# live under docs/<path>/.
+# into docs/docs/index.html.  Older entries are static snapshots that already
+# live under docs/docs/<path>/.
 DOC_VERSIONS = [
     {"label": "3.0", "path": ".", "current": True},
     {"label": "2.0", "path": "2.0"},
@@ -154,8 +155,8 @@ def build():
     output = output.replace("{{CONTENT}}", content_html)
     output = output.replace("{{SIDEBAR}}", sidebar_html)
 
-    (DOCS_DIR / "index.html").write_text(output)
-    print("Built docs/index.html")
+    (SITE_DIR / "index.html").write_text(output)
+    print("Built docs/docs/index.html")
 
 
 if __name__ == "__main__":

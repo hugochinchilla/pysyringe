@@ -38,7 +38,7 @@ dev = [
 [project.urls]
 homepage = "https://github.com/hugochinchilla/pysyringe"
 repository = "https://github.com/hugochinchilla/pysyringe"
-documentation = "https://www.hugochinchilla.net/pysyringe/"
+documentation = "https://www.hugochinchilla.net/pysyringe/docs/"
 issues = "https://github.com/hugochinchilla/pysyringe/issues"
 changelog = "https://github.com/hugochinchilla/pysyringe/blob/master/CHANGELOG.md"
 
