@@ -64,9 +64,3 @@ Key features beyond layout:
 The reference page's content is real (from the repo README: installation, factory, container, aliases/register_instance, inject, test overrides, singleton helpers, thread/async safety) — production renders the actual markdown sources styled to match. Full spec: `docs/README.md`.
 
 Likely target: custom MkDocs theme (or Material overrides) + mike for versioning, matching the existing toolchain.
-
-## Suggested implementation order
-
-1. Apply the brand kit to the repo (banner, social preview, favicon) — 10 minutes, no code.
-2. Build the docs theme (`docs/README.md`) — it carries the token system and both themes.
-3. Build the landing page (`landing/README.md`) reusing those tokens; link it as the docs home.
