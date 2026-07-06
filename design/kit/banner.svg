@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300">
+  <rect width="1200" height="300" fill="#0E1420"></rect>
+  <text x="600" y="148" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;,ui-monospace,SFMono-Regular,Menlo,Consolas,&#39;Liberation Mono&#39;,monospace" font-size="54" fill="#F3F5F9"><tspan fill="#5B8DEF">Provide</tspan><tspan fill="#FFD343">[</tspan><tspan>pysyringe</tspan><tspan fill="#FFD343">]</tspan></text>
+  <text x="600" y="196" text-anchor="middle" font-family="&#39;Space Grotesk&#39;,&#39;Helvetica Neue&#39;,Helvetica,Arial,sans-serif" font-size="23" fill="#8A97AC">Typed, zero-decorator dependency injection for Python.</text>
+  <text x="600" y="248" text-anchor="middle" font-family="&#39;JetBrains Mono&#39;,ui-monospace,SFMono-Regular,Menlo,Consolas,&#39;Liberation Mono&#39;,monospace" font-size="17" fill="#5E6B80">domain stays clean   ·   inject at call sites   ·   override in tests</text>
+</svg>
