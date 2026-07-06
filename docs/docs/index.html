@@ -6,6 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PySyringe - Dependency Injection for Python</title>
   <meta name="description" content="An opinionated, zero-decorator dependency injection library for Python. Keep your domain clean, inject only at call sites.">
+  <link rel="icon" type="image/svg+xml" href="https://raw.githubusercontent.com/hugochinchilla/pysyringe/master/assets/logo-mark.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,16 +17,20 @@
 <!-- Top navigation -->
 <header class="topnav">
   <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">&#9776;</button>
-  <a href="#" class="topnav-brand"><img src="https://raw.githubusercontent.com/hugochinchilla/pysyringe/master/assets/logo.svg" alt="" width="28" height="28">PySyringe</a>
+  <a href="../" class="topnav-brand"><img src="https://raw.githubusercontent.com/hugochinchilla/pysyringe/master/assets/logo-mark.svg" alt="" width="28" height="28">pysyringe</a>
+  <div class="version-picker">
+    <button class="version-chip" onclick="toggleVersionMenu(event)">v3.0 <span class="caret">&#9662;</span></button>
+    <div class="version-menu">
+      <a class="version-item current" href="index.html"><span>v3.0</span><span class="version-tag">latest</span></a>
+      <a class="version-item" href="2.0/index.html"><span>v2.0</span><span class="version-tag"></span></a>
+      <a class="version-item" href="1.5/index.html"><span>v1.5</span><span class="version-tag"></span></a>
+    </div>
+  </div>
   <div class="topnav-links">
-    <a href="https://github.com/hugochinchilla/pysyringe">GitHub</a>
+    <a href="../">Home</a>
     <a href="https://pypi.org/project/pysyringe/">PyPI</a>
-    <select class="version-select" onchange="switchVersion(this.value)">
-      <option value="index.html" selected>v3.0</option>
-      <option value="2.0/index.html">v2.0</option>
-      <option value="1.5/index.html">v1.5</option>
-    </select>
-    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode"></button>
+    <a href="https://github.com/hugochinchilla/pysyringe">GitHub &#8599;</a>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">&#9790; dark</button>
   </div>
 </header>
 
@@ -86,7 +94,7 @@
 <main class="main">
 
 <!-- Banner -->
-<img src="https://raw.githubusercontent.com/hugochinchilla/pysyringe/master/assets/banner.svg" alt="PySyringe" class="hero-banner">
+<img src="https://raw.githubusercontent.com/hugochinchilla/pysyringe/master/assets/banner.png" alt="PySyringe" class="hero-banner">
 
 <!-- Hero -->
 <div class="hero">
@@ -749,38 +757,41 @@
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pysyringe</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnresolvableUnionTypeError</span>
 </code></pre></div>
 
+<!-- Footer -->
+<div class="docs-footer">
+  <div>pysyringe &middot; MIT &middot; Python &ge; 3.11</div>
+  <a href="https://github.com/hugochinchilla/pysyringe/blob/master/docs/content.md">Edit on GitHub &#8599;</a>
+</div>
+
 </main>
 </div>
 
 <script>
 (function() {
-  var saved = localStorage.getItem('theme');
-  if (saved) document.documentElement.setAttribute('data-theme', saved);
-  function update() {
-    var isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
-      (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.querySelector('.theme-toggle').textContent = isDark ? '\u2600\uFE0F' : '\uD83C\uDF19';
+  var KEY = 'pysyringe-docs-theme';
+  function apply(theme) {
+    document.body.dataset.theme = theme;
+    var btn = document.querySelector('.theme-toggle');
+    if (btn) btn.textContent = theme === 'dark' ? '☾ dark' : '☀ light';
   }
-  document.addEventListener('DOMContentLoaded', update);
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', update);
+  apply(localStorage.getItem(KEY) || 'dark');
   window.toggleTheme = function() {
-    var current = document.documentElement.getAttribute('data-theme');
-    var isDark;
-    if (current) {
-      isDark = current === 'dark';
-    } else {
-      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    var next = isDark ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-    update();
+    var next = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(KEY, next);
+    apply(next);
   };
 })();
 
-function switchVersion(path) {
-  if (path) window.location.href = path;
+function toggleVersionMenu(e) {
+  e.stopPropagation();
+  document.querySelector('.version-picker').classList.toggle('open');
 }
+document.addEventListener('click', function() {
+  document.querySelector('.version-picker').classList.remove('open');
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') document.querySelector('.version-picker').classList.remove('open');
+});
 
 function toggleSidebar() {
   document.querySelector('.sidebar').classList.toggle('open');

@@ -65,12 +65,16 @@ def read_version():
 
 
 def build_version_options():
-    """Generate <option> elements for the version switcher."""
+    """Generate version-menu items for the version switcher dropdown."""
     options = []
     for v in DOC_VERSIONS:
         href = "index.html" if v.get("current") else f"{v['path']}/index.html"
-        selected = " selected" if v.get("current") else ""
-        options.append(f'      <option value="{href}"{selected}>v{v["label"]}</option>')
+        cls = "version-item current" if v.get("current") else "version-item"
+        tag = "latest" if v is DOC_VERSIONS[0] else ""
+        options.append(
+            f'      <a class="{cls}" href="{href}">'
+            f'<span>v{v["label"]}</span><span class="version-tag">{tag}</span></a>'
+        )
     return "\n".join(options)
 
 
