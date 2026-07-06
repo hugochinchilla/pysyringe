@@ -7,9 +7,9 @@ Concept: *the API is the logo* — `Provide[pysyringe]`, set in JetBrains Mono.
 
 | File | Size | Use |
 |---|---|---|
-| `banner.png` | 1200×300 | README banner — drop-in replacement for `assets/banner.svg` in the repo (recommended: PNG renders identically everywhere) |
+| `banner.png` | 1200×300 | README banner (preferred: PNG renders identically everywhere) |
 | `banner.svg` | 1200×300 | Vector banner; falls back to system monospace where webfonts are blocked (e.g. GitHub camo) |
-| `og-image.png` | 1200×630 | GitHub → Settings → Social preview; also `<meta property="og:image">` on the docs site |
+| `og-image.png` | 1200×630 | Social preview / `<meta property="og:image">` |
 | `logo-mark.svg` | 128×128 | App icon / favicon source (brackets + injection point); legible down to 16px |
 | `wordmark-on-dark.svg` | 620×72 | Lockup for dark backgrounds |
 | `wordmark-on-light.svg` | 620×72 | Lockup for light backgrounds (palette deepened one step for contrast) |
@@ -40,9 +40,3 @@ Usage: navy dominates; yellow is scarce — brackets, one CTA, eyebrows. Blue fo
 - `Provide` blue · `[` `]` yellow · `pysyringe` near-white (dark) / ink (light)
 - Always JetBrains Mono, never letter-spaced, never wrapped
 - Favicon/avatar: use `logo-mark.svg`, not the wordmark
-
-## How to apply in the repo
-
-1. Replace `assets/banner.svg` with `kit/banner.png` (update the README `<img>` path).
-2. Upload `kit/og-image.png` as the GitHub social preview.
-3. Generate favicons from `kit/logo-mark.svg` for the docs site.

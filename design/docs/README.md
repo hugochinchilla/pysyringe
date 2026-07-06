@@ -1,13 +1,7 @@
-# Handoff: PySyringe Docs Site (actual documentation pages)
+# PySyringe Docs Site — Design Spec
 
 ## Overview
-Documentation site for **PySyringe** (https://github.com/hugochinchilla/pysyringe) in the new brand system. Current docs live at hugochinchilla.net/pysyringe with markdown sources in the repo's `docs/` folder. This design restyles the docs to match the "Provide[pysyringe]" brand, with **light and dark themes** and a **version selector** (the project keeps docs snapshots of previous versions, e.g. via `mike` if the docs are MkDocs-based).
-
-## About the Design File
-`PySyringe Docs.dc.html` is a **design reference created in HTML** — not production code. Recreate it in the docs toolchain the repo actually uses. If the docs are MkDocs, the most likely implementation is a custom MkDocs theme (or heavy `extra.css` overrides on Material) plus `mike` for versioning; if plain HTML/SSG, replicate the layout directly. Read the markup inside `<x-dc>` for structure and the `class Component` script for behavior/data. Inline styles are the spec; the CSS custom properties in the `<style>` block define both themes.
-
-## Fidelity
-High-fidelity for layout, tokens, and components. The page content shown (Getting Started) is real content from the repo README — production should render the actual markdown sources from `docs/`, styled to match.
+Documentation pages for **PySyringe** (https://github.com/hugochinchilla/pysyringe) in the "Provide[pysyringe]" brand system, with **light and dark themes** and a **version selector** across the docs snapshots kept for previous releases. Layout, tokens, and components are high-fidelity; the content is the project's real documentation rendered in this system.
 
 ## Design Tokens (CSS custom properties — copy verbatim)
 
@@ -26,22 +20,22 @@ Type: JetBrains Mono (wordmark, code, labels, eyebrows, version chip) + Space Gr
 Three-column: sticky left sidebar (240px) · main content (max 760px) · sticky right TOC (220px), centered in a 1400px container. Sticky header (z 10) at top; version banner (z 9) sticks directly below it at `top:65px`.
 
 ### Header
-Logo mark (28px, `kit/logo-mark.svg`) + "pysyringe" mono 16px bold + **version selector** + right links (Home, PyPI, GitHub ↗) + theme toggle button (mono, bordered, shows "☾ dark" / "☀ light").
+Logo mark (28px, `../kit/logo-mark.svg`) + "pysyringe" mono 16px bold + **version selector** + right links (Home, PyPI, GitHub ↗) + theme toggle button (mono, bordered, shows "☾ dark" / "☀ light").
 
 ### Version selector (key feature)
 - Chip next to the logo: current version + ▾ caret, mono 11px, 1px `--line` border, radius 6px. Hover: border `--line2`.
 - Click opens a dropdown: `--well` background, 1px `--line2` border, radius 8px, padding 6px, min-width 160px, shadow `0 8px 24px rgba(0,0,0,0.35)`, z 20.
 - One row per version snapshot, mono 12px, padding 7px 10px, radius 6px, hover background `--bg`. Right-aligned tag mono 10px `--text3`: "latest" on the newest, "viewing" on the selected one. Selected row text is `--blue`, others `--text2`.
-- Demo versions in the reference: v2.0.0 (latest), v1.6.1, v1.5.0, v1.4.2, v1.3.0. **Production: populate from the real docs snapshots** (e.g. mike's `versions.json`); selecting navigates to that snapshot's URL (`/pysyringe/<version>/…`), preserving the current page path when it exists in that snapshot.
+- Selecting a version navigates to that snapshot's URL, preserving the current page path when it exists in that snapshot. The URL is the source of truth for which version is shown.
 
 ### Old-version banner (key feature)
 Shown only when the viewed snapshot is NOT the latest:
 - Full-width strip under the header, sticky at `top:65px`, `--well` background, bottom border `--line`, padding 11px 32px, centered flex row, gap 14px.
 - Contents: `[!]` glyph mono 12px in `--yellow-ink` · text 13.5px `--text2`: "You are viewing the documentation for **{version}**, which is not the latest release." (version in mono, `--text`) · action chip "switch to {latest} →" mono 12px `--blue`, 1px `--line2` border, radius 6px, padding 4px 10px, hover border `--blue`. Links to the same page in the latest snapshot.
-- Not dismissible. Rendered on every page of a non-latest snapshot (bake it into the snapshot build or inject via JS reading versions.json).
+- Not dismissible. Rendered on every page of a non-latest snapshot.
 
 ### Sidebar
-Nav groups with mono 11px `// LABEL` eyebrows in `--yellow-ink` (`// START`, `// GUIDE`, `// ADVANCED`); items 14px `--text2`, padding 6px 10px, radius 7px, hover: text `--text` + background `--well`. Production: generated from the docs nav tree; mark the active page with `--blue` text + a 2px left border in `--blue`.
+Nav groups with mono 11px `// LABEL` eyebrows in `--yellow-ink` (`// START`, `// GUIDE`, `// ADVANCED`); items 14px `--text2`, padding 6px 10px, radius 7px, hover: text `--text` + background `--well`. The active page is marked with `--blue` text + a 2px left border in `--blue`.
 
 ### Main content patterns
 - Breadcrumb: mono 12px `--text3` ("docs / getting started")
@@ -51,27 +45,17 @@ Nav groups with mono 11px `// LABEL` eyebrows in `--yellow-ink` (`// START`, `//
 - Callouts: bordered `--well` box, radius 10px, `[!]` glyph in `--yellow-ink`, body 14px `--text2`
 - Two-up card grid for comparisons (singleton helpers): bordered cards radius 12px, mono `[tag]` title with yellow brackets + blue name
 - Checklist rows: green ✓ mono glyph + 14.5px text
-- Footer: top border, "pysyringe · MIT · Python ≥ 3.10" + "Edit on GitHub ↗"
+- Footer: top border, "pysyringe · MIT · Python ≥ 3.11" + "Edit on GitHub ↗"
 
 ### Right TOC
-`// ON THIS PAGE` eyebrow + 13px `--text2` anchor links, hover `--blue`. Production: highlight the active section on scroll (optional).
+`// ON THIS PAGE` eyebrow + 13px `--text2` anchor links, hover `--blue`. The active section may be highlighted on scroll (optional).
 
 ## Interactions & Behavior
 - **Theme toggle**: swaps `data-theme` on `<body>`; persists in `localStorage` key `pysyringe-docs-theme`; default dark. All colors flow through the CSS variables — no other JS needed.
-- **Version dropdown**: toggles on chip click; closes on selection. Production: also close on outside click / Escape.
-- **Banner "switch to latest"**: navigates to latest snapshot.
+- **Version dropdown**: toggles on chip click; closes on selection, outside click, or Escape.
+- **Banner "switch to latest"**: navigates to the latest snapshot.
 - Hovers are color/border shifts only, ~150ms; no underlines anywhere.
 - Responsive: below ~1100px hide the right TOC; below ~900px collapse the sidebar behind a menu button; content gutter drops to 20–24px.
 
-## State Management
-- `theme: 'dark' | 'light'` — localStorage-persisted
-- `version: string` — in the reference this is client state for demo purposes; **in production the version is the URL path**, not state
-- `versionMenuOpen: boolean`
-
 ## Assets
-- `kit/logo-mark.svg` — header logo / favicon source
-- Fonts from Google Fonts: JetBrains Mono, Space Grotesk
-
-## Files
-- `PySyringe Docs.dc.html` — hi-fi reference (markup = layout spec, inline styles + CSS vars = style spec, script = behavior + demo data)
-- `kit/logo-mark.svg`
+From `../kit/` (see its README for brand rules): `logo-mark.svg` as the header mark and favicon source. Fonts from Google Fonts: JetBrains Mono, Space Grotesk.
