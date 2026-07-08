@@ -1,8 +1,5 @@
 # Migrating from 2.x to 3.0
 
-3.0 is available as a release candidate: `pip install --pre pysyringe`
-(or pin `pysyringe==3.0.0rc1`).
-
 ## Duplicate factory methods raise at construction
 
 In 2.x and earlier, when two factory methods declared the same return type,
